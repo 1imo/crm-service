@@ -4,16 +4,26 @@ import { CreateCustomerButton } from '@/components/customers/CreateCustomerButto
 export default function CustomersPage() {
   return (
     <div>
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your customer relationships</p>
+      {/* Header Section */}
+      <div className="bg-[#00603A] text-white">
+        <div className="px-12 py-16">
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-semibold">Customers</h1>
+                <p className="mt-1 text-[#B8E1D3]">Manage your customer relationships</p>
+              </div>
+              <CreateCustomerButton />
+            </div>
+          </div>
         </div>
-        <CreateCustomerButton />
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm">
-        <CustomerList />
+      {/* Main Content */}
+      <div className="p-12">
+        <div className="bg-white">
+          <CustomerList />
+        </div>
       </div>
     </div>
   );

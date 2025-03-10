@@ -62,21 +62,20 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
     setSaving(true);
 
     try {
-      // Map camelCase back to snake_case for API
       const apiData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        account_name: formData.accountName,
-        account_number: formData.accountNumber,
-        sort_code: formData.sortCode,
-        bank_name: formData.bankName,
-        address_line1: formData.addressLine1,
-        address_line2: formData.addressLine2,
-        postcode: formData.postcode,
-        iban_number: formData.iban,
-        city: formData.city,
-        county: formData.county
+        name: formData.name || company?.name,
+        email: formData.email || company?.email,
+        phone: formData.phone || company?.phone,
+        account_name: formData.accountName || company?.accountName,
+        account_number: formData.accountNumber || company?.accountNumber,
+        sort_code: formData.sortCode || company?.sortCode,
+        bank_name: formData.bankName || company?.bankName,
+        address_line1: formData.addressLine1 || company?.addressLine1,
+        address_line2: formData.addressLine2 || company?.addressLine2,
+        postcode: formData.postcode || company?.postcode,
+        iban_number: formData.iban || company?.iban,
+        city: formData.city || company?.city,
+        county: formData.county || company?.county
       };
 
       const response = await fetch(`/api/companies/${id}`, {
@@ -193,10 +192,10 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
                 onClick={() => setShowDeleteModal(true)}
                 className="inline-flex items-center px-4 py-2 bg-[#9B2C2C] text-white rounded-md hover:bg-[#7C2222] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9B2C2C] transition-colors"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                Delete
+                
               </button>
             </div>
           </div>
@@ -209,7 +208,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
           <div className="grid grid-cols-2 gap-12">
             {/* Company Information */}
             <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8">Company Information</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Company Information</h3>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   {renderField('Company Name', company?.name, 'name')}
@@ -233,7 +232,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
 
             {/* Address Information */}
             <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8">Address</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Address</h3>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   {renderField('Address Line 1', company?.addressLine1, 'addressLine1')}
@@ -251,7 +250,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
 
             {/* Banking Details */}
             <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8">Banking Details</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Banking Details</h3>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   {renderField('Bank Name', company?.bankName, 'bankName')}

@@ -1,6 +1,7 @@
 import NextAuth, { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import axios from 'axios'
+import { JWT } from 'next-auth/jwt'
 
 // Base interface for nullable fields
 interface BaseUser {
@@ -9,6 +10,7 @@ interface BaseUser {
     firstName: string | null | undefined;
     lastName: string | null | undefined;
     role: string | null | undefined;
+    companyId: string | null | undefined;
 }
 
 // Interface for authorized users (must have non-null values)
@@ -19,6 +21,7 @@ interface AuthorizedUser {
     firstName: string;
     lastName: string;
     role: string;
+    companyId: string;
 }
 
 interface AuthUser extends BaseUser { }
@@ -77,7 +80,8 @@ export const authOptions: NextAuthOptions = {
                             name: `${userData.firstName} ${userData.lastName}`.trim(),
                             firstName: userData.firstName,
                             lastName: userData.lastName,
-                            role: userData.role
+                            role: userData.role,
+                            companyId: userData.companyId
                         };
                         console.log('Authorized User:', user);
                         return user;
@@ -91,38 +95,37 @@ export const authOptions: NextAuthOptions = {
         })
     ],
     callbacks: {
-        async jwt({ token, user }) {
-            console.log('JWT Callback - Token:', token, 'User:', user);
-
+        async jwt({ token, user, trigger, session }) {
             if (user) {
+                // Initial sign in
                 token.id = user.id;
                 token.email = user.email;
                 token.name = user.name;
                 token.firstName = user.firstName;
                 token.lastName = user.lastName;
                 token.role = user.role;
+                token.companyId = user.companyId;
+            }
+
+            // Handle updates to session
+            if (trigger === "update" && session?.user?.companyId) {
+                token.companyId = session.user.companyId;
             }
 
             return token;
         },
         async session({ session, token }) {
-            console.log('Session Callback - Token:', token);
-
-            if (token && session.user) {
-                // Ensure we're returning non-nullable values
-                if (token.id && token.email && token.name && token.firstName && token.lastName && token.role) {
-                    session.user = {
-                        id: token.id,
-                        email: token.email,
-                        name: token.name,
-                        firstName: token.firstName,
-                        lastName: token.lastName,
-                        role: token.role
-                    } as AuthorizedUser;
-                }
+            if (token) {
+                session.user = {
+                    id: token.id as string,
+                    email: token.email as string,
+                    name: token.name as string,
+                    firstName: token.firstName as string,
+                    lastName: token.lastName as string,
+                    role: token.role as string,
+                    companyId: token.companyId as string,
+                };
             }
-
-            console.log('Final Session:', session);
             return session;
         }
     },
@@ -131,6 +134,7 @@ export const authOptions: NextAuthOptions = {
     },
     session: {
         strategy: 'jwt',
+        maxAge: 30 * 24 * 60 * 60, // 30 days
     },
     secret: process.env.NEXTAUTH_SECRET
 }

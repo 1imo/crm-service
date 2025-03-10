@@ -1,4 +1,5 @@
 import type { DefaultSession } from 'next-auth'
+import 'next-auth'
 
 declare module 'next-auth' {
     interface Session {
@@ -7,6 +8,7 @@ declare module 'next-auth' {
             email: string
             name: string
             role: string
+            companyId?: string
         } & DefaultSession['user']
     }
 
@@ -15,6 +17,7 @@ declare module 'next-auth' {
         email: string
         name: string
         role: string
+        companyId?: string
     }
 }
 

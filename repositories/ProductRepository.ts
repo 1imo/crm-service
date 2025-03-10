@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
-import { Product } from '@/types/product';
 import { pools } from '@/config/database';
+import { Product } from '@/types/product';
 
 export class ProductRepository {
     private readonly db: Pool;
@@ -9,38 +9,65 @@ export class ProductRepository {
         this.db = pools.orders;
     }
 
-    async create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> {
+    async findById(id: string, companyId: string): Promise<Product | null> {
+        const result = await this.db.query(
+            'SELECT * FROM product WHERE id = $1 AND company_id = $2',
+            [id, companyId]
+        );
+        return result.rows[0] || null;
+    }
+
+    async findAll(companyId: string): Promise<Product[]> {
+        const result = await this.db.query(
+            'SELECT * FROM product WHERE company_id = $1 ORDER BY created_at DESC',
+            [companyId]
+        );
+        return result.rows;
+    }
+
+    async create(data: Partial<Product>, companyId: string): Promise<Product> {
         const result = await this.db.query(
             `INSERT INTO product (
-        company_id, name, description, sku,
-        price, stock_quantity
-      ) VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *`,
+                name, description, sku, price, stock_quantity, company_id
+            ) VALUES ($1, $2, $3, $4, $5, $6) 
+            RETURNING *`,
             [
-                data.companyId,
                 data.name,
                 data.description,
                 data.sku,
                 data.price,
-                data.stockQuantity
+                data.stockQuantity,
+                companyId
             ]
         );
         return result.rows[0];
     }
 
-    async findAll(): Promise<Product[]> {
+    async update(id: string, data: Partial<Product>, companyId: string): Promise<Product> {
         const result = await this.db.query(
-            'SELECT * FROM product ORDER BY created_at DESC'
+            `UPDATE product 
+            SET name = $1, description = $2, sku = $3, price = $4, stock_quantity = $5, 
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $6 AND company_id = $7
+            RETURNING *`,
+            [
+                data.name,
+                data.description,
+                data.sku,
+                data.price,
+                data.stockQuantity,
+                id,
+                companyId
+            ]
         );
-        return result.rows;
+        return result.rows[0];
     }
 
-    async findById(id: string): Promise<Product | null> {
-        const result = await this.db.query(
-            'SELECT * FROM product WHERE id = $1',
-            [id]
+    async delete(id: string, companyId: string): Promise<void> {
+        await this.db.query(
+            'DELETE FROM product WHERE id = $1 AND company_id = $2',
+            [id, companyId]
         );
-        return result.rows[0] || null;
     }
 
     async findByCompanyId(companyId: string): Promise<Product[]> {
@@ -51,32 +78,18 @@ export class ProductRepository {
         return result.rows;
     }
 
-    async update(id: string, data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Product> {
-        const fields = Object.keys(data);
-        const values = Object.values(data);
-        const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
-
-        const result = await this.db.query(
-            `UPDATE product 
-       SET ${setClause}, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $1 
-       RETURNING *`,
-            [id, ...values]
-        );
-        return result.rows[0];
-    }
-
-    async search(query: string): Promise<Product[]> {
+    async search(query: string, companyId: string): Promise<Product[]> {
         const searchPattern = `%${query}%`;
         const result = await this.db.query(
             `SELECT * FROM product 
-             WHERE 
-               LOWER(name) LIKE LOWER($1) OR
-               LOWER(sku) LIKE LOWER($1) OR
-               LOWER(description) LIKE LOWER($1)
-             ORDER BY name
-             LIMIT 10`,
-            [searchPattern]
+            WHERE company_id = $1 AND (
+                LOWER(name) LIKE LOWER($2) OR
+                LOWER(sku) LIKE LOWER($2) OR
+                LOWER(description) LIKE LOWER($2)
+            )
+            ORDER BY name
+            LIMIT 10`,
+            [companyId, searchPattern]
         );
         return result.rows;
     }

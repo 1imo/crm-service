@@ -43,7 +43,6 @@ export async function PUT(
 ) {
     try {
         const session = await getServerSession(authOptions);
-
         if (!session?.user?.id) {
             return NextResponse.json(
                 { error: 'Unauthorized' },
@@ -52,10 +51,28 @@ export async function PUT(
         }
 
         const data = await request.json();
-        const companyRepository = new CompanyRepository();
-        const company = await companyRepository.update(params.id, data);
 
-        return NextResponse.json(company);
+        // Ensure all required fields have values
+        const updateData = {
+            name: data.name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            account_name: data.account_name || '',
+            account_number: data.account_number || '',
+            sort_code: data.sort_code || '',
+            bank_name: data.bank_name || '',
+            address_line1: data.address_line1 || '',
+            address_line2: data.address_line2 || '',
+            postcode: data.postcode || '',
+            iban_number: data.iban_number || '',
+            city: data.city || '',
+            county: data.county || ''
+        };
+
+        const companyRepository = new CompanyRepository();
+        const updatedCompany = await companyRepository.update(params.id, updateData);
+
+        return NextResponse.json(updatedCompany);
     } catch (error) {
         console.error('Failed to update company:', error);
         return NextResponse.json(

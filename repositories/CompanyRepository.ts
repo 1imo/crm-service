@@ -17,7 +17,21 @@ export class CompanyRepository {
         return result.rows[0] || null;
     }
 
-    async update(id: string, data: Partial<Company>): Promise<Company> {
+    async update(id: string, data: {
+        name: string;
+        email: string;
+        phone: string;
+        account_name: string;
+        account_number: string;
+        sort_code: string;
+        bank_name: string;
+        address_line1: string;
+        address_line2: string;
+        postcode: string;
+        iban_number: string;
+        city: string;
+        county: string;
+    }): Promise<Company> {
         const result = await this.db.query(
             `UPDATE company
              SET name = $1,
@@ -40,19 +54,20 @@ export class CompanyRepository {
                 data.name,
                 data.email,
                 data.phone,
-                data.accountName,
-                data.accountNumber,
-                data.sortCode,
-                data.bankName,
-                data.addressLine1,
-                data.addressLine2,
+                data.account_name,
+                data.account_number,
+                data.sort_code,
+                data.bank_name,
+                data.address_line1,
+                data.address_line2,
                 data.postcode,
-                data.iban,
+                data.iban_number,
                 data.city,
                 data.county,
                 id
             ]
         );
+
         return result.rows[0];
     }
 
