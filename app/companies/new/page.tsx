@@ -21,7 +21,8 @@ export default function CreateCompanyPage() {
     accountNumber: '',
     sortCode: '',
     bankName: '',
-    iban: ''
+    iban: '',
+    logo: null as File | null
   });
   const router = useRouter();
   const { data: session } = useSession();
@@ -29,24 +30,29 @@ export default function CreateCompanyPage() {
   const steps = [
     { number: 1, title: 'Company Details' },
     { number: 2, title: 'Address' },
-    { number: 3, title: 'Banking Details' }
+    { number: 3, title: 'Banking Details' },
+    { number: 4, title: 'Company Logo' }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentStep < 3) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
       return;
     }
     setLoading(true);
 
     try {
+      const formDataToSend = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== null) {
+          formDataToSend.append(key, value);
+        }
+      });
+
       const companyResponse = await fetch('/api/companies', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
+        body: formDataToSend
       });
 
       if (!companyResponse.ok) {
@@ -244,6 +250,68 @@ export default function CreateCompanyPage() {
                     </div>
                   </div>
                 );
+              case 4:
+                return (
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Company Logo
+                      </label>
+                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                        <div className="space-y-1 text-center">
+                          {formData.logo ? (
+                            <div className="space-y-2">
+                              <img
+                                src={URL.createObjectURL(formData.logo)}
+                                alt="Preview"
+                                className="mx-auto h-32 w-32 object-contain"
+                              />
+                              <p className="text-sm text-gray-500">{formData.logo.name}</p>
+                            </div>
+                          ) : (
+                            <svg
+                              className="mx-auto h-12 w-12 text-gray-400"
+                              stroke="currentColor"
+                              fill="none"
+                              viewBox="0 0 48 48"
+                              aria-hidden="true"
+                            >
+                              <path
+                                d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                          <div className="flex text-sm text-gray-600">
+                            <label
+                              htmlFor="file-upload"
+                              className="relative cursor-pointer bg-white rounded-md font-medium text-[#00603A] hover:text-[#004D2E] focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#00603A]"
+                            >
+                              <span>Upload a file</span>
+                              <input
+                                id="file-upload"
+                                name="file-upload"
+                                type="file"
+                                className="sr-only"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setFormData({ ...formData, logo: file });
+                                  }
+                                }}
+                              />
+                            </label>
+                            <p className="pl-1">or drag and drop</p>
+                          </div>
+                          <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
               default:
                 return null;
             }
@@ -277,7 +345,7 @@ export default function CreateCompanyPage() {
                 <div 
                   className="h-full bg-[#00603A] transition-all duration-300"
                   style={{ 
-                    width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' 
+                    width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : currentStep === 3 ? '100%' : '100%' 
                   }}
                 />
               </div>
@@ -332,7 +400,7 @@ export default function CreateCompanyPage() {
                       Creating...
                     </span>
                   ) : (
-                    currentStep === 3 ? 'Create Company' : 'Next'
+                    currentStep === 4 ? 'Create Company' : 'Next'
                   )}
                 </button>
               </div>

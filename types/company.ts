@@ -15,4 +15,6 @@ export interface Company {
     iban: string;
     city: string;
     county: string;
+    logo?: string;  // URL to the logo
+    logoFile?: File;  // For handling file uploads
 } 

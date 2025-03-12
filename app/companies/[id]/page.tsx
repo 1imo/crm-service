@@ -4,13 +4,17 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Company } from '@/types/company';
 
+interface CompanyFormData extends Omit<Company, 'logoFile'> {
+  logoFile?: File;
+}
+
 export default function CompanyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<Partial<Company>>({});
+  const [formData, setFormData] = useState<Partial<CompanyFormData>>({});
   const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -62,6 +66,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
     setSaving(true);
 
     try {
+      // First update company details
       const apiData = {
         name: formData.name || company?.name,
         email: formData.email || company?.email,
@@ -89,6 +94,21 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
       if (!response.ok) throw new Error('Failed to update company');
       
       const updatedData = await response.json();
+
+      // Then handle logo upload if there's a new logo
+      if (formData.logoFile) {
+        const logoFormData = new FormData();
+        logoFormData.append('file', formData.logoFile);
+        logoFormData.append('companyId', id);
+
+        const logoResponse = await fetch('/api/companies/upload-logo', {
+          method: 'POST',
+          body: logoFormData
+        });
+
+        if (!logoResponse.ok) throw new Error('Failed to upload logo');
+      }
+
       // Map the response data back to camelCase
       const mappedUpdatedData = {
         id: updatedData.id,
@@ -140,6 +160,15 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
       setShowDeleteModal(false);
     }
   };
+
+  const handleLogoChange = (file: File | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      logoFile: file
+    }));
+  };
+
+  console.log(`${process.env.NEXT_PUBLIC_IMAGE_SERVICE_URL}/media/company-logo/file/${company?.id}`)
 
   if (loading) return <div className="p-6">Loading company details...</div>;
   if (error) return <div className="p-6 text-red-500">{error}</div>;
@@ -263,6 +292,68 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
                 <div className="grid grid-cols-2 gap-6">
                   {renderField('IBAN', company?.iban, 'iban')}
                 </div>
+              </div>
+            </section>
+
+            {/* Company Logo */}
+            <section className="pt-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Company Logo</h3>
+              <div>
+                {isEditing && formData.logoFile ? (
+                  <img
+                    src={URL.createObjectURL(formData.logoFile)}
+                    alt="Logo preview"
+                    className="w-full h-auto"
+                  />
+                ) : (
+                  <img
+                    src={`${process.env.NEXT_PUBLIC_IMAGE_SERVICE_URL}/media/company-logo/file/${company.id}?t=${company.updatedAt?.getTime()}`}
+                    alt={`${company.name} logo`}
+                    className="w-full h-auto"
+                  />
+                )}
+                {isEditing && (
+                  <div className="mt-4">
+                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                      <div className="space-y-1 text-center">
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="flex text-sm text-gray-600">
+                          <label
+                            htmlFor="company-logo"
+                            className="relative cursor-pointer bg-white rounded-md font-medium text-[#00603A] hover:text-[#004D2E] focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#00603A]"
+                          >
+                            <span>Upload a new logo</span>
+                            <input
+                              id="company-logo"
+                              name="company-logo"
+                              type="file"
+                              className="sr-only"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                handleLogoChange(file);
+                              }}
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
           </div>
