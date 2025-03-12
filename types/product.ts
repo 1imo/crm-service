@@ -5,7 +5,7 @@ export interface Product {
     description?: string;
     sku?: string;
     price: number;
-    stockQuantity: number;
-    createdAt: Date;
-    updatedAt: Date;
+    stock_quantity: number;
+    created_at: Date;
+    updated_at: Date;
 } 

@@ -1,5 +1,5 @@
 import { Pool, PoolClient } from 'pg';
-import { Order } from '@/types';
+import { Order } from '@/types/order';
 import { pools } from '@/config/database';
 import { ProductRepository } from './ProductRepository';
 
@@ -48,7 +48,7 @@ export class OrderRepository {
         return newBatchResult.rows[0].new_batch_id;
     }
 
-    async create(data: OrderData) {
+    async create(data: OrderData, companyId: string) {
         const client = await this.db.connect();
 
         try {
@@ -59,10 +59,14 @@ export class OrderRepository {
 
             for (const item of data.items) {
                 // Fetch product details
-                const product = await this.productRepository.findById(item.productId);
+                const product = await this.productRepository.findById(item.productId, companyId);
                 if (!product) {
                     throw new Error(`Product not found: ${item.productId}`);
                 }
+
+                console.log("Batch: ", batchId)
+
+                console.log("Product: ", product)
 
                 // Create the order with product details
                 const orderResult = await client.query(
@@ -74,7 +78,7 @@ export class OrderRepository {
                     RETURNING *`,
                     [
                         data.customerId,
-                        data.companyId,
+                        companyId,
                         batchId,
                         product.name,
                         item.quantity,
@@ -150,5 +154,28 @@ export class OrderRepository {
             'SELECT * FROM "order" ORDER BY created_at DESC'
         );
         return result.rows;
+    }
+
+    async getAll(companyId: string): Promise<Order[]> {
+        const result = await this.db.query(
+            'SELECT * FROM "order" WHERE company_id = $1 ORDER BY created_at DESC',
+            [companyId]
+        );
+        return result.rows;
+    }
+
+    async getByBatchId(batchId: string, companyId: string): Promise<Order[]> {
+        const result = await this.db.query(
+            'SELECT * FROM "order" WHERE batch_id = $1 AND company_id = $2 ORDER BY created_at DESC',
+            [batchId, companyId]
+        );
+        return result.rows;
+    }
+
+    async deleteByBatchId(batchId: string, companyId: string): Promise<void> {
+        await this.db.query(
+            'DELETE FROM "order" WHERE batch_id = $1 AND company_id = $2',
+            [batchId, companyId]
+        );
     }
 } 

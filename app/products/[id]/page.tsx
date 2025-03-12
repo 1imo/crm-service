@@ -10,10 +10,10 @@ interface Product {
     description: string;
     sku: string;
     price: number;
-    stockQuantity: number;
+    stock_quantity: number;
     companyId: string;
-    createdAt: string;
-    updatedAt: string;
+    created_at: string;
+    updated_at: string;
     images?: Array<{
         id: string;
         filename: string;
@@ -216,7 +216,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                                 <div className="grid grid-cols-2 gap-6">
                                     {renderField('Price', product.price, 'price')}
-                                    {renderField('Stock Quantity', product.stockQuantity, 'stockQuantity')}
+                                    {renderField('Stock Quantity', product.stock_quantity, 'stock_quantity')}
                                 </div>
                                 <div className="col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -241,29 +241,84 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                             <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Product Images</h3>
                             <div className="space-y-6">
                                 {isEditing && (
-                                    <div className="mb-6">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Add New Images
-                                        </label>
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            onChange={(e) => setNewImages(e.target.files)}
-                                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#00603A] file:text-white hover:file:bg-[#004D2E]"
-                                        />
+                                    <div 
+                                        className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 bg-gray-100 border-dashed rounded-md"
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            const files = Array.from(e.dataTransfer.files);
+                                            if (files.length > 0) {
+                                                setNewImages(files as any);
+                                            }
+                                        }}
+                                    >
+                                        <div className="space-y-1 text-center">
+                                            <svg
+                                                className="mx-auto h-12 w-12 text-gray-400"
+                                                stroke="currentColor"
+                                                fill="none"
+                                                viewBox="0 0 48 48"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                                    strokeWidth={2}
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                            <div className="flex flex-col items-center text-sm text-gray-600">
+                                                <label
+                                                    htmlFor="file-upload"
+                                                    className="relative cursor-pointer bg-white rounded-md font-medium text-[#00603A] hover:text-[#004D2E] focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#00603A]"
+                                                >
+                                                    <span>Upload files</span>
+                                                    <input
+                                                        id="file-upload"
+                                                        name="file-upload"
+                                                        type="file"
+                                                        className="sr-only"
+                                                        multiple
+                                                        accept="image/*"
+                                                        onChange={(e) => setNewImages(e.target.files)}
+                                                    />
+                                                </label>
+                                                <p className="mt-1">or drag and drop</p>
+                                            </div>
+                                            <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                                        </div>
                                     </div>
                                 )}
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-3 gap-4">
                                     {product.images?.map((image) => (
-                                        <div key={image.id} className="relative">
-                                            <Image
-                                                src={`${IMAGE_SERVICE_URL}/api/media/file/${image.filename}`}
-                                                alt={image.originalName}
-                                                width={300}
-                                                height={300}
-                                                className="rounded-lg object-cover"
-                                            />
+                                        <div key={image.id} className="relative group">
+                                            <div className="aspect-[2/3] w-full relative overflow-hidden rounded-lg bg-gray-100">
+                                                <Image
+                                                    src={`${IMAGE_SERVICE_URL}/api/media/file/${image.filename}`}
+                                                    alt={image.originalName}
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                                                />
+                                            </div>
+                                            {isEditing && (
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-2 right-2 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={() => {
+                                                        // Add image deletion logic here
+                                                        console.log('Delete image:', image.id);
+                                                    }}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -277,11 +332,11 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                                 <div className="grid grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Created</label>
-                                        <p className="text-sm text-gray-900">{new Date(product.createdAt).toLocaleDateString()}</p>
+                                        <p className="text-sm text-gray-900">{new Date(product.created_at).toLocaleDateString()}</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
-                                        <p className="text-sm text-gray-900">{new Date(product.updatedAt).toLocaleDateString()}</p>
+                                        <p className="text-sm text-gray-900">{new Date(product.updated_at).toLocaleDateString()}</p>
                                     </div>
                                 </div>
                             </div>

@@ -36,7 +36,7 @@ export class ProductRepository {
                 data.description,
                 data.sku,
                 data.price,
-                data.stockQuantity,
+                data.stock_quantity,
                 companyId
             ]
         );
@@ -55,7 +55,7 @@ export class ProductRepository {
                 data.description,
                 data.sku,
                 data.price,
-                data.stockQuantity,
+                data.stock_quantity,
                 id,
                 companyId
             ]
@@ -79,18 +79,30 @@ export class ProductRepository {
     }
 
     async search(query: string, companyId: string): Promise<Product[]> {
-        const searchPattern = `%${query}%`;
+        const searchPattern = query ? `%${query}%` : '%';
         const result = await this.db.query(
             `SELECT * FROM product 
             WHERE company_id = $1 AND (
-                LOWER(name) LIKE LOWER($2) OR
-                LOWER(sku) LIKE LOWER($2) OR
-                LOWER(description) LIKE LOWER($2)
+                CASE WHEN $2 = '%' THEN true
+                ELSE (
+                    LOWER(name) LIKE LOWER($2) OR
+                    LOWER(sku) LIKE LOWER($2) OR
+                    LOWER(description) LIKE LOWER($2)
+                )
+                END
             )
             ORDER BY name
-            LIMIT 10`,
+            LIMIT 3`,
             [companyId, searchPattern]
         );
         return result.rows;
+    }
+
+    async findByName(name: string, companyId: string): Promise<Product | null> {
+        const result = await this.db.query(
+            'SELECT * FROM product WHERE name = $1 AND company_id = $2',
+            [name, companyId]
+        );
+        return result.rows[0] || null;
     }
 } 

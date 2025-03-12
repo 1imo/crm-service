@@ -121,23 +121,23 @@ export function ProductList() {
               {/* Stock */}
               <div className="col-span-4">
                 <p className={`text-sm ${
-                  product.stockQuantity > 10 ? 'text-green-600' : 
-                  product.stockQuantity > 0 ? 'text-yellow-600' : 
+                  product.stock_quantity > 10 ? 'text-green-600' : 
+                  product.stock_quantity > 0 ? 'text-yellow-600' : 
                   'text-red-600'
                 }`}>
-                  Stock: {product.stockQuantity}
+                  Stock: {product.stock_quantity}
                 </p>
               </div>
 
               {/* Status */}
               <div className="col-span-1 text-center">
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  product.stockQuantity > 10 ? 'bg-green-100 text-green-800' : 
-                  product.stockQuantity > 0 ? 'bg-yellow-100 text-yellow-800' : 
+                  product.stock_quantity > 10 ? 'bg-green-100 text-green-800' : 
+                  product.stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' : 
                   'bg-red-100 text-red-800'
                 }`}>
-                  {product.stockQuantity > 10 ? 'In Stock' : 
-                   product.stockQuantity > 0 ? 'Low Stock' : 
+                  {product.stock_quantity > 10 ? 'In Stock' : 
+                   product.stock_quantity > 0 ? 'Low Stock' : 
                    'Out of Stock'}
                 </span>
               </div>

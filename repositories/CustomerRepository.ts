@@ -49,6 +49,20 @@ export class CustomerRepository {
     }
 
     async search(query: string, companyId: string): Promise<Customer[]> {
+        console.log("HIT")
+        if (!query.trim()) {
+            // Return 3 most recent customers when query is empty
+            const result = await this.db.query(
+                `SELECT * FROM customer 
+                WHERE company_id = $1
+                ORDER BY created_at DESC
+                LIMIT 3`,
+                [companyId]
+            );
+            console.log(result.rows)
+            return result.rows;
+        }
+
         const searchPattern = `%${query}%`;
         const result = await this.db.query(
             `SELECT * FROM customer 
@@ -61,7 +75,7 @@ export class CustomerRepository {
                 LOWER(city) LIKE LOWER($2) OR
                 LOWER(postcode) LIKE LOWER($2))
             ORDER BY first_name, last_name
-            LIMIT 10`,
+            LIMIT 3`,
             [companyId, searchPattern]
         );
         return result.rows;

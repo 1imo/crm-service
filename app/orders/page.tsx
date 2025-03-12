@@ -3,12 +3,28 @@ import { CreateOrderButton } from '@/components/orders/CreateOrderButton';
 
 export default function OrdersPage() {
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Orders</h1>
-        <CreateOrderButton />
+    <div>
+      {/* Header Section */}
+      <div className="bg-[#00603A] text-white">
+        <div className="px-12 py-16">
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-semibold">Orders</h1>
+                <p className="mt-1 text-[#B8E1D3]">Manage your orders</p>
+              </div>
+              <CreateOrderButton />
+            </div>
+          </div>
+        </div>
       </div>
-      <OrderList />
+
+      {/* Main Content */}
+      <div className="p-12">
+        <div className="bg-white">
+          <OrderList />
+        </div>
+      </div>
     </div>
   );
 } 

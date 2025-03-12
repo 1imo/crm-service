@@ -252,7 +252,7 @@ export function CreateCustomerForm() {
           {/* Step Numbers */}
           <div className="flex justify-between relative z-10">
             {steps.map((step) => (
-              <div key={step.number}>
+              <div key={step.number} className="flex flex-col items-center">
                 <motion.div 
                   className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-medium ${
                     currentStep >= step.number 
@@ -266,6 +266,7 @@ export function CreateCustomerForm() {
                 >
                   {step.number}
                 </motion.div>
+                <span className="mt-2 text-sm text-gray-600">{step.title}</span>
               </div>
             ))}
           </div>
@@ -274,6 +275,12 @@ export function CreateCustomerForm() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6 mt-8">
           {renderFormStep()}
+          
+          {error && (
+            <div className="text-red-600 text-sm">
+              {error}
+            </div>
+          )}
           
           <div className="flex justify-end pt-6 space-x-6">
             {currentStep > 1 && (

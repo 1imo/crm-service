@@ -1,14 +1,14 @@
 export interface Order {
     id: string;
-    batchId: string;
-    customerId: string;
-    companyId: string;
-    productName: string;
+    batch_id: string;
+    customer_id: string;
+    company_id: string;
+    product_name: string;
     quantity: number;
-    unitPrice: number;
-    totalPrice: number;
-    status: 'draft' | 'pending' | 'completed' | 'cancelled';
+    unit_price: number;
+    total_price: number;
+    status: 'draft' | 'pending payment' | 'paid' | 'completed' | 'cancelled';
     notes?: string;
-    createdAt: Date;
-    updatedAt: Date;
+    created_at: Date;
+    updated_at: Date;
 } 
