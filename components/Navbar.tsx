@@ -4,6 +4,33 @@ import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Menu } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import {
+  HomeIcon,
+  Users2Icon,
+  Building2Icon,
+  UserIcon,
+  PackageIcon,
+  ShoppingCartIcon,
+  ReceiptIcon,
+  Settings2Icon,
+  LogOutIcon,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Company {
   id: string;
@@ -15,7 +42,6 @@ export default function Navbar() {
   const { data: session, update: updateSession } = useSession();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  const [isCompanySwitcherOpen, setIsCompanySwitcherOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -80,158 +106,197 @@ export default function Navbar() {
       }
     });
     
-    setIsCompanySwitcherOpen(false);
     window.location.reload();
   };
 
-  // Don't show navbar on signin page
   if (!mounted || pathname === '/signin') {
     return null;
   }
 
-  const currentCompany = companies.find((company: Company) => company.id === selectedCompanyId);
+  const currentCompany = companies.find((company) => company.id === selectedCompanyId);
 
   const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-    )},
-    { href: '/prospects', label: 'Prospects', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    )},
-    { href: '/companies', label: 'Companies', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-      </svg>
-    )},
-    { href: '/customers', label: 'Customers', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    )},
-    { href: '/products', label: 'Products', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-    )},
-    { href: '/orders', label: 'Orders', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      </svg>
-    )},
-    { href: '/users', label: 'Users', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    )},
-    { href: '/settings', label: 'Settings', icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    )},
+    {
+      title: "Overview",
+      items: [
+        {
+          href: '/dashboard',
+          label: 'Dashboard',
+          icon: <HomeIcon className="h-4 w-4" />
+        },
+        {
+          href: '/analytics',
+          label: 'Analytics',
+          icon: <PackageIcon className="h-4 w-4" />
+        },
+      ]
+    },
+    {
+      title: "Management",
+      items: [
+        {
+          href: '/prospects',
+          label: 'Prospects',
+          icon: <Users2Icon className="h-4 w-4" />
+        },
+        {
+          href: '/companies',
+          label: 'Companies',
+          icon: <Building2Icon className="h-4 w-4" />
+        },
+        {
+          href: '/customers',
+          label: 'Customers',
+          icon: <UserIcon className="h-4 w-4" />
+        },
+        {
+          href: '/products',
+          label: 'Products',
+          icon: <PackageIcon className="h-4 w-4" />
+        },
+        {
+          href: '/orders',
+          label: 'Orders',
+          icon: <ShoppingCartIcon className="h-4 w-4" />
+        },
+        {
+          href: '/invoices',
+          label: 'Invoices',
+          icon: <ReceiptIcon className="h-4 w-4" />
+        },
+      ]
+    },
+    {
+      title: "Settings",
+      items: [
+        {
+          href: '/users',
+          label: 'Users',
+          icon: <Users2Icon className="h-4 w-4" />
+        },
+        {
+          href: '/settings',
+          label: 'Settings',
+          icon: <Settings2Icon className="h-4 w-4" />
+        },
+      ]
+    }
   ];
 
   return (
-    <nav className="h-screen w-64 bg-white border-r border-gray-200">
-      <div className="flex flex-col h-full">
-        <div className="p-6 border-b border-gray-200">
-          <Link href="/dashboard" className="flex items-center space-x-3">
-            <span className="text-xl font-bold text-[#00603A]">PapStore CRM</span>
+    <div className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col">
+      <div className="flex flex-col h-full border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-[60px] items-center px-6 border-b">
+          <Link 
+            href="/dashboard" 
+            className="flex items-center gap-2 font-semibold"
+          >
+            <PackageIcon className="h-6 w-6" />
+            <span className="font-bold">PapStore CRM</span>
           </Link>
         </div>
 
-        <div className="flex-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center justify-between w-full px-4 py-3 text-sm transition-colors ${
-                pathname === item.href
-                  ? 'bg-[#E8F5F0] text-[#00603A]'
-                  : 'text-[#00603A] hover:bg-[#E8F5F0]'
-              }`}
-            >
-              <div className="flex items-center">
-                {item.icon}
-                <span className="ml-3 font-medium">{item.label}</span>
-              </div>
-              {pathname === item.href && (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </Link>
-          ))}
-        </div>
-
-        <div className="border-t border-gray-200">
-          <div className="relative">
-            {isCompanySwitcherOpen && companies.length > 0 && (
-              <div className="absolute bottom-full w-full bg-white border-t border-gray-200 max-h-64 overflow-y-auto">
+        <div className="flex-1 flex flex-col">
+          <div className="p-4">
+            <Select value={selectedCompanyId} onValueChange={handleCompanyChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Company" />
+              </SelectTrigger>
+              <SelectContent>
                 {companies.map((company) => (
-                  <button
-                    key={company.id}
-                    onClick={() => handleCompanyChange(company.id)}
-                    className={`flex items-center justify-between w-full px-4 py-3 text-sm transition-colors ${
-                      selectedCompanyId === company.id
-                        ? 'bg-[#E8F5F0] text-[#00603A]'
-                        : 'text-[#00603A] hover:bg-[#E8F5F0]'
-                    }`}
+                  <SelectItem 
+                    key={company.id} 
+                    value={company.id}
+                    className="px-4 py-2"
                   >
-                    <div className="flex items-center">
-                      <div className={`w-2 h-2 rounded-full mr-3 ${
-                        selectedCompanyId === company.id ? 'bg-[#00603A]' : 'bg-gray-300'
-                      }`} />
-                      <span className="font-medium truncate">{company.name}</span>
-                    </div>
-                    {selectedCompanyId === company.id && (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
+                    {company.name}
+                  </SelectItem>
                 ))}
-              </div>
-            )}
-            
-            <button
-              onClick={() => setIsCompanySwitcherOpen(!isCompanySwitcherOpen)}
-              className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#E8F5F0] transition-colors border-b border-gray-200 text-[#00603A]"
-            >
-              <div className="flex items-center">
-                <div className="w-2 h-2 rounded-full bg-[#00603A] mr-3" />
-                <span className="text-sm font-medium truncate">
-                  {currentCompany?.name || 'Select Company'}
-                </span>
-              </div>
-              <svg
-                className={`w-5 h-5 transition-transform ${isCompanySwitcherOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+              </SelectContent>
+            </Select>
           </div>
 
-          <button
-            onClick={() => signOut({ callbackUrl: '/signin' })}
-            className="w-full px-4 py-3 flex items-center justify-between text-sm text-[#00603A] hover:bg-[#E8F5F0] transition-colors"
-          >
-            <div className="flex items-center">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span className="ml-3 font-medium">Sign Out</span>
+          <ScrollArea className="flex-1">
+            <div className="space-y-6 p-4">
+              {navItems.map((section, i) => (
+                <div key={i} className="space-y-2">
+                  <h4 className="text-sm font-medium leading-none text-muted-foreground px-2">
+                    {section.title}
+                  </h4>
+                  <div className="space-y-1">
+                    {section.items.map((item) => (
+                      <Button
+                        key={item.href}
+                        variant={pathname === item.href ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start gap-2",
+                          pathname === item.href && "bg-secondary"
+                        )}
+                        asChild
+                      >
+                        <Link href={item.href}>
+                          {item.icon}
+                          <span className="text-sm font-medium">{item.label}</span>
+                        </Link>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          </button>
+          </ScrollArea>
+        </div>
+
+        <div className="mt-auto border-t">
+          <div className="p-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start gap-3 px-4 py-3 h-auto"
+                >
+                  <Avatar className="h-10 w-10 border bg-secondary">
+                    <AvatarImage src={session?.user?.image || ''} />
+                    <AvatarFallback className="bg-secondary text-secondary-foreground">
+                      {session?.user?.name?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col items-start justify-center text-left">
+                    <span className="text-sm font-medium leading-none">
+                      {session?.user?.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-1">
+                      {session?.user?.email}
+                    </span>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                className="w-[calc(100vw-32px)] lg:w-[232px]"
+                align="end" 
+                side="top"
+                alignOffset={-8}
+              >
+                <DropdownMenuLabel className="px-4 py-2">
+                  My Account
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="px-4 py-2 gap-3">
+                  <Settings2Icon className="h-4 w-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="px-4 py-2 gap-3 text-red-600 focus:text-red-600"
+                  onClick={() => signOut({ callbackUrl: '/signin' })}
+                >
+                  <LogOutIcon className="h-4 w-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
-    </nav>
+    </div>
   );
 } 

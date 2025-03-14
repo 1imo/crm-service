@@ -2,41 +2,35 @@
 
 import { CreateOrderForm } from '@/components/orders/CreateOrderForm';
 import { motion } from 'framer-motion';
+import { ClipboardList } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 export default function CreateOrderPage() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
-      className="min-h-screen bg-white"
-    >
-      {/* Header Section */}
-      <div className="bg-[#00603A] text-white">
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
-        >
-          <h1 className="text-3xl font-semibold">Create Order</h1>
-          <p className="mt-1 text-[#B8E1D3]">Create a new order in your CRM</p>
-        </motion.div>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-[59px] items-center px-6">
+          <div className="flex items-center flex-shrink-0">
+            <ClipboardList className="h-5 w-5" />
+            <div className="ml-3">
+              <h1 className="text-sm font-medium leading-none">
+                Create Order
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                Create a new order in your CRM
+              </p>
+            </div>
+          </div>
+          <Separator orientation="vertical" className="mx-6 h-8" />
+          <div className="flex-1" />
+        </div>
       </div>
 
       {/* Main Content */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 bg-white"
-      >
-        <div className="bg-white rounded-lg overflow-hidden">
-          <div className="p-12">
-            <CreateOrderForm onComplete={() => window.location.href = '/orders'} />
-          </div>
+        <div className="w-full">
+          <CreateOrderForm onComplete={() => window.location.href = '/orders'} />
         </div>
-      </motion.div>
-    </motion.div>
+    </div>
   );
 } 

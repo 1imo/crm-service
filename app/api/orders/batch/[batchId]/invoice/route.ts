@@ -36,6 +36,8 @@ export async function POST(
             );
         }
 
+        console.log(request.headers)
+
         // Prepare invoice data
         const invoiceData = {
             orderBatchId: batchId,
@@ -43,7 +45,8 @@ export async function POST(
             companyId: session.user.companyId,
             templateId: DEFAULT_TEMPLATE_ID,
             currency: 'GBP',
-            status: 'draft'
+            status: 'draft',
+            host: request.headers.get('x-forwarded-host')
         };
 
         console.log('Sending invoice data:', invoiceData);

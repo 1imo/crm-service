@@ -15,7 +15,7 @@ module.exports = {
         }
       },
       animation: {
-        shake: 'shake 0.6s ease-in-out',
+        shake: 'shake 0.6s ease-in-out'
       }
     },
   },

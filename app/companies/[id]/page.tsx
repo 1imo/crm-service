@@ -1,30 +1,47 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Company } from '@/types/company';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Building2, Pencil, Trash2, Loader2, Users2, Package, Receipt, Upload } from "lucide-react";
+import Link from 'next/link';
+import Image from "next/image";
 
 interface CompanyFormData extends Omit<Company, 'logoFile'> {
   logoFile?: File;
 }
 
-export default function CompanyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function CompanyDetailsPage({ params }: { params: { id: string } }) {
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<CompanyFormData>>({});
   const [saving, setSaving] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const fetchCompany = async () => {
       try {
-        const response = await fetch(`/api/companies/${id}`);
+        const response = await fetch(`/api/companies/${params.id}`);
         if (!response.ok) throw new Error('Failed to fetch company');
         const data = await response.json();
         
@@ -59,7 +76,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
     };
 
     fetchCompany();
-  }, [id]);
+  }, [params.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +100,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
         county: formData.county || company?.county
       };
 
-      const response = await fetch(`/api/companies/${id}`, {
+      const response = await fetch(`/api/companies/${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -99,7 +116,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
       if (formData.logoFile) {
         const logoFormData = new FormData();
         logoFormData.append('file', formData.logoFile);
-        logoFormData.append('companyId', id);
+        logoFormData.append('companyId', params.id);
 
         const logoResponse = await fetch('/api/companies/upload-logo', {
           method: 'POST',
@@ -145,7 +162,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
     
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/companies/${id}`, {
+      const response = await fetch(`/api/companies/${params.id}`, {
         method: 'DELETE',
       });
 
@@ -157,7 +174,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
       console.error('Failed to delete company:', error);
     } finally {
       setIsDeleting(false);
-      setShowDeleteModal(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -168,270 +185,360 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
     }));
   };
 
-  console.log(`${process.env.NEXT_PUBLIC_IMAGE_SERVICE_URL}/media/company-logo/file/${company?.id}`)
+  const logoUrl = company?.id 
+    ? `${process.env.NEXT_PUBLIC_IMAGE_SERVICE_URL}/media/company-logo/file/${company.id}`
+    : null;
 
-  if (loading) return <div className="p-6">Loading company details...</div>;
-  if (error) return <div className="p-6 text-red-500">{error}</div>;
-  if (!company) return <div className="p-6">Company not found</div>;
-
-  const renderField = (label: string, value: string | undefined, fieldName: keyof Company) => (
-    <div className="col-span-2 sm:col-span-1">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      {isEditing ? (
-        <input
-          type="text"
-          value={formData[fieldName]?.toString() || ''}
-          onChange={(e) => setFormData({ ...formData, [fieldName]: e.target.value })}
-          className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#00603A] focus:border-[#00603A] sm:text-sm"
-        />
-      ) : (
-        <p className="text-sm text-gray-900">{value || '-'}</p>
+  const renderField = (
+    label: string, 
+    value: string | null | undefined, 
+    editField?: ReactNode
+  ) => (
+    <div className="flex flex-col space-y-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {isEditing && editField ? editField : (
+        <span className="text-sm">{value || '—'}</span>
       )}
     </div>
   );
 
-  const formatDate = (date: Date | string | undefined) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString();
-  };
-
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header Section */}
-      <div className="bg-[#00603A] text-white">
-        <div className="px-12 py-16">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-semibold">{company?.name}</h1>
-              <p className="mt-1 text-[#B8E1D3]">Company Details</p>
+    <div className="flex flex-col h-full">
+      {/* Header with consistent button spacing */}
+      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-[59px] items-center px-6">
+          <div className="flex items-center flex-shrink-0 pr-6">
+            <Building2 className="h-5 w-5" />
+            <div className="ml-3">
+              <h1 className="text-sm font-medium leading-none">
+                Company Details
+              </h1>
             </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="inline-flex items-center px-4 py-2 bg-white text-[#00603A] rounded-md hover:bg-[#E8F5F0] transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                {isEditing ? 'Cancel' : 'Edit'}
-              </button>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-[#9B2C2C] text-white rounded-md hover:bg-[#7C2222] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9B2C2C] transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                
-              </button>
-            </div>
+          </div>
+          <Separator orientation="vertical" className="h-8" />
+          <div className="flex-1" />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <Link href={`/companies/${company?.id}/contacts`}>
+                <Users2 className="h-4 w-4 mr-2" />
+                Contacts
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <Link href={`/companies/${company?.id}/orders`}>
+                <Package className="h-4 w-4 mr-2" />
+                Orders
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <Link href={`/companies/${company?.id}/invoices`}>
+                <Receipt className="h-4 w-4 mr-2" />
+                Invoices
+              </Link>
+            </Button>
+            <Separator orientation="vertical" className="h-8" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(!isEditing)}
+              disabled={loading}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Details
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={loading}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="px-12 py-16">
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-12">
-            {/* Company Information */}
-            <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Company Information</h3>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Company Name', company?.name, 'name')}
-                  {renderField('Email', company?.email, 'email')}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Phone', company?.phone, 'phone')}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Created</label>
-                    <p className="text-sm text-gray-900">{formatDate(company?.createdAt)}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
-                    <p className="text-sm text-gray-900">{formatDate(company?.updatedAt)}</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Address Information */}
-            <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Address</h3>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Address Line 1', company?.addressLine1, 'addressLine1')}
-                  {renderField('Address Line 2', company?.addressLine2, 'addressLine2')}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('City', company?.city, 'city')}
-                  {renderField('County', company?.county, 'county')}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Postcode', company?.postcode, 'postcode')}
-                </div>
-              </div>
-            </section>
-
-            {/* Banking Details */}
-            <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Banking Details</h3>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Bank Name', company?.bankName, 'bankName')}
-                  {renderField('Account Name', company?.accountName, 'accountName')}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Account Number', company?.accountNumber, 'accountNumber')}
-                  {renderField('Sort Code', company?.sortCode, 'sortCode')}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('IBAN', company?.iban, 'iban')}
-                </div>
-              </div>
-            </section>
-
-            {/* Company Logo */}
-            <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Company Logo</h3>
-              <div>
-                {isEditing && formData.logoFile ? (
-                  <img
-                    src={URL.createObjectURL(formData.logoFile)}
-                    alt="Logo preview"
-                    className="w-full h-auto"
-                  />
-                ) : (
-                  <img
-                    src={`${process.env.NEXT_PUBLIC_IMAGE_SERVICE_URL}/media/company-logo/file/${company.id}?t=${company.updatedAt?.getTime()}`}
-                    alt={`${company.name} logo`}
-                    className="w-full h-auto"
-                  />
-                )}
-                {isEditing && (
-                  <div className="mt-4">
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                      <div className="space-y-1 text-center">
-                        <svg
-                          className="mx-auto h-12 w-12 text-gray-400"
-                          stroke="currentColor"
-                          fill="none"
-                          viewBox="0 0 48 48"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+      <div className="flex-1 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">{error}</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Top Row: Logo and Company Info */}
+              <div className="grid grid-cols-3 gap-6">
+                {/* Logo */}
+                <Card className="col-span-1 shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Company Logo</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="relative w-full aspect-[3/2] rounded-lg border overflow-hidden">
+                        {logoPreview ? (
+                          <Image
+                            src={logoPreview}
+                            alt="Company logo preview"
+                            fill
+                            className="object-contain"
                           />
-                        </svg>
-                        <div className="flex text-sm text-gray-600">
-                          <label
-                            htmlFor="company-logo"
-                            className="relative cursor-pointer bg-white rounded-md font-medium text-[#00603A] hover:text-[#004D2E] focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#00603A]"
-                          >
-                            <span>Upload a new logo</span>
-                            <input
-                              id="company-logo"
-                              name="company-logo"
-                              type="file"
-                              className="sr-only"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                handleLogoChange(file);
+                        ) : logoUrl ? (
+                          <Image
+                            src={logoUrl}
+                            alt="Company logo"
+                            fill
+                            className="object-contain"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-muted">
+                            <Building2 className="h-12 w-12 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      {isEditing && (
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="flex-1" asChild>
+                            <label className="cursor-pointer">
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload New Logo
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setFormData({ ...formData, logoFile: file });
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      const result = reader.result;
+                                      if (typeof result === 'string') {
+                                        setLogoPreview(result);
+                                      }
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </Button>
+                          {logoPreview && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setLogoPreview(null);
+                                setFormData({ ...formData, logoFile: undefined });
                               }}
-                            />
-                          </label>
+                            >
+                              Remove
+                            </Button>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Company Information */}
+                <Card className="col-span-2 shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Company Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("Company Name", company?.name,
+                          <Input
+                            value={formData.name || company?.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          />
+                        )}
+                        {renderField("Email Address", company?.email,
+                          <Input
+                            type="email"
+                            value={formData.email || company?.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("Phone Number", company?.phone,
+                          <Input
+                            type="tel"
+                            value={formData.phone || company?.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          />
+                        )}
+                        {renderField("Created", company?.createdAt.toLocaleDateString())}
                       </div>
                     </div>
-                  </div>
-                )}
+                  </CardContent>
+                </Card>
               </div>
-            </section>
-          </div>
 
-          {/* Action Buttons */}
-          {isEditing && (
-            <div className="flex justify-end space-x-3 mt-12">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00603A]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#00603A] hover:bg-[#004D2E] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00603A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                {saving ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Saving...
-                  </span>
-                ) : (
-                  'Save Changes'
-                )}
-              </button>
-            </div>
+              {/* Bottom Row: Address and Banking split */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Address */}
+                <Card className="shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Address</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("Address Line 1", company?.addressLine1,
+                          <Input
+                            value={formData.addressLine1 || company?.addressLine1}
+                            onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
+                          />
+                        )}
+                        {renderField("Address Line 2", company?.addressLine2,
+                          <Input
+                            value={formData.addressLine2 || company?.addressLine2}
+                            onChange={(e) => setFormData({ ...formData, addressLine2: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("City", company?.city,
+                          <Input
+                            value={formData.city || company?.city}
+                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          />
+                        )}
+                        {renderField("County", company?.county,
+                          <Input
+                            value={formData.county || company?.county}
+                            onChange={(e) => setFormData({ ...formData, county: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      {renderField("Postcode", company?.postcode,
+                        <Input
+                          value={formData.postcode || company?.postcode}
+                          onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
+                        />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Banking Information */}
+                <Card className="shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Banking Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("Bank Name", company?.bankName,
+                          <Input
+                            value={formData.bankName || company?.bankName}
+                            onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                          />
+                        )}
+                        {renderField("Account Name", company?.accountName,
+                          <Input
+                            value={formData.accountName || company?.accountName}
+                            onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      <Separator />
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("Account Number", company?.accountNumber,
+                          <Input
+                            value={formData.accountNumber || company?.accountNumber}
+                            onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                          />
+                        )}
+                        {renderField("Sort Code", company?.sortCode,
+                          <Input
+                            value={formData.sortCode || company?.sortCode}
+                            onChange={(e) => setFormData({ ...formData, sortCode: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      {renderField("IBAN", company?.iban,
+                        <Input
+                          value={formData.iban || company?.iban}
+                          onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
+                        />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Save Button */}
+              {isEditing && (
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </form>
           )}
-        </form>
+        </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Company</h3>
-            <p className="text-sm text-gray-500 mb-4">
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Company</AlertDialogTitle>
+            <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the company
-              <span className="font-medium text-gray-900"> {company?.name}</span>.
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              Please type <span className="font-medium text-gray-900">{company?.name}</span> to confirm.
-            </p>
-            <input
-              type="text"
+              <span className="font-medium"> {company?.name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#00603A] focus:border-[#00603A] mb-4"
-              placeholder="Type company name to confirm"
+              placeholder={`Type "${company?.name}" to confirm`}
             />
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setDeleteConfirmation('');
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00603A]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleteConfirmation !== company?.name || isDeleting}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Company'}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteConfirmation !== company?.name || isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Company'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 

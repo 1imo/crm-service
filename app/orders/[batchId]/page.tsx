@@ -1,9 +1,33 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { Order } from '@/types/order';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Order } from '@/types/order';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  ClipboardList,
+  Mail,
+  Trash2,
+  Loader2,
+  User,
+  MapPin,
+  Phone,
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface OrderWithDetails extends Order {
   customer_details: {
@@ -36,8 +60,7 @@ interface MergedOrder {
   total_price: number;
 }
 
-export default function OrderBatchDetailsPage({ params }: { params: Promise<{ batchId: string }> }) {
-  const { batchId } = use(params);
+export default function OrderBatchDetailsPage({ params }: { params: { batchId: string } }) {
   const router = useRouter();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [mergedOrders, setMergedOrders] = useState<MergedOrder[]>([]);
@@ -50,7 +73,7 @@ export default function OrderBatchDetailsPage({ params }: { params: Promise<{ ba
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch(`/api/orders/batch/${batchId}`);
+        const response = await fetch(`/api/orders/batch/${params.batchId}`);
         if (!response.ok) throw new Error('Failed to fetch orders');
         const data = await response.json();
         console.log('Raw API Response:', data);
@@ -85,14 +108,14 @@ export default function OrderBatchDetailsPage({ params }: { params: Promise<{ ba
     };
 
     fetchOrders();
-  }, [batchId]);
+  }, [params.batchId]);
 
   const handleDelete = async () => {
-    if (deleteConfirmation !== batchId) return;
+    if (deleteConfirmation !== params.batchId) return;
     
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/orders/batch/${batchId}`, {
+      const response = await fetch(`/api/orders/batch/${params.batchId}`, {
         method: 'DELETE',
       });
 
@@ -108,205 +131,355 @@ export default function OrderBatchDetailsPage({ params }: { params: Promise<{ ba
     }
   };
 
-  if (loading) return <div>Loading orders...</div>;
+  if (loading) return (
+    <div className="flex flex-col h-full">
+      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-[59px] items-center px-6">
+          <div className="flex items-center flex-shrink-0">
+            <ClipboardList className="h-5 w-5" />
+            <div className="ml-3">
+              <h1 className="text-sm font-medium leading-none">
+                Loading batch details...
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                <Skeleton className="h-4 w-32 inline-block" />
+              </p>
+            </div>
+          </div>
+          <Separator orientation="vertical" className="mx-6 h-8" />
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled>
+              <Mail className="mr-2 h-4 w-4" />
+              Send Invoice
+            </Button>
+            <Button variant="destructive" size="sm" disabled>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 gap-6">
+            <Card className="shadow-none bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Products</p>
+                    <div className="text-2xl font-semibold">
+                      <Skeleton className="h-8 w-8" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Amount</p>
+                    <div className="text-2xl font-semibold">
+                      <Skeleton className="h-8 w-28" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-none bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Customer Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="block space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Name</span>
+                      <div className="text-sm">
+                        <Skeleton className="h-5 w-36" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Email</span>
+                      <div className="text-sm">
+                        <Skeleton className="h-5 w-48" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Address</span>
+                      <div className="text-sm">
+                        <Skeleton className="h-5 w-40 mb-1" />
+                        <Skeleton className="h-5 w-44 mb-1" />
+                        <Skeleton className="h-5 w-32" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Phone</span>
+                      <div className="text-sm">
+                        <Skeleton className="h-5 w-32" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-6">
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50 bg-white"
+                >
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Skeleton className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-1 items-center justify-between">
+                    <div className="grid grid-cols-4 flex-1 gap-8 items-center">
+                      <div className="flex flex-col">
+                        <Skeleton className="h-5 w-32 mb-2" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                      <div className="text-sm">
+                        <Skeleton className="h-5 w-16" />
+                      </div>
+                      <div className="text-sm text-center">
+                        <Skeleton className="h-5 w-16 mx-auto" />
+                      </div>
+                      <div className="text-sm font-medium text-right">
+                        <Skeleton className="h-5 w-20 ml-auto" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (error) return <div className="text-red-500">{error}</div>;
   if (orders.length === 0) return <div>No orders found</div>;
 
-  const firstOrder = orders[0]; // Use first order for customer info
+  const firstOrder = orders[0];
+  const totalAmount = orders.reduce((sum, order) => sum + Number(order.total_price), 0);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header Section */}
-      <div className="bg-[#00603A] text-white">
-        <div className="px-12 py-16">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-semibold">Batch #{batchId.slice(0, 8)}</h1>
-              <p className="mt-1 text-[#B8E1D3]">
-                {mergedOrders.length} {mergedOrders.length === 1 ? 'product' : 'products'} · 
-                Total: £{orders.reduce((sum, order) => sum + Number(order.total_price), 0).toFixed(2)}
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-[59px] items-center px-6">
+          <div className="flex items-center flex-shrink-0">
+            <ClipboardList className="h-5 w-5" />
+            <div className="ml-3">
+              <h1 className="text-sm font-medium leading-none">
+                Batch #{params.batchId.slice(0, 8)}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">
+                {mergedOrders.length} products · £{totalAmount.toFixed(2)}
               </p>
             </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={async () => {
-                  try {
-                    const response = await fetch(`/api/orders/batch/${batchId}/invoice`, {
-                      method: 'POST',
-                    });
-                    
-                    if (!response.ok) {
-                      throw new Error('Failed to create invoice');
-                    }
-                    
-                    const invoice = await response.json();
-                    // Redirect to invoice viewer or show success message
-                    window.open(`${process.env.NEXT_PUBLIC_INVOICE_SERVICE_URL}/api/invoices/${invoice.id}`, '_blank');
-                  } catch (error) {
-                    console.error('Error creating invoice:', error);
-                    // You might want to show an error toast/notification here
-                  }
-                }}
-                className="inline-flex items-center px-4 py-2 bg-white text-[#00603A] rounded-md hover:bg-[#E8F5F0] transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                Send Invoice
-              </button>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-[#9B2C2C] text-white rounded-md hover:bg-[#7C2222] transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
+          </div>
+          <Separator orientation="vertical" className="mx-6 h-8" />
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const response = await fetch(`/api/orders/batch/${params.batchId}/invoice`, {
+                    method: 'POST',
+                  });
+                  if (!response.ok) throw new Error('Failed to create invoice');
+                  const invoice = await response.json();
+                  window.open(`${process.env.NEXT_PUBLIC_INVOICE_SERVICE_URL}/api/invoices/${invoice.id}`, '_blank');
+                } catch (error) {
+                  console.error('Error creating invoice:', error);
+                }
+              }}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Send Invoice
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="px-12 py-16">
-        <div className="space-y-16">
-          {/* Order Summary and Customer Details Row */}
-          <div className="grid grid-cols-2 gap-12">
+      <div className="flex-1 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 gap-6">
             {/* Order Summary */}
-            <section>
-              <h3 className="text-lg font-medium text-gray-900 mb-6 pb-2 border-b border-gray-200">Order Summary</h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Total Products</p>
-                  <p className="mt-1 text-2xl font-semibold text-gray-900">{mergedOrders.length}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Total Amount</p>
-                  <p className="mt-1 text-2xl font-semibold text-gray-900">
-                    £{orders.reduce((sum, order) => sum + Number(order.total_price), 0).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* Customer Information */}
-            <section>
-              <h3 className="text-lg font-medium text-gray-900 mb-6 pb-2 border-b border-gray-200">Customer Details</h3>
-              <Link 
-                href={`/customers/${firstOrder.customer_details?.id}`}
-                className="group"
-              >
+            <Card className="shadow-none bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="grid grid-cols-2 gap-6">
-                  {/* Contact Information */}
                   <div>
-                    <p className="text-sm font-medium text-gray-900 group-hover:text-[#00603A]">
-                      {firstOrder.customer_details?.first_name && firstOrder.customer_details?.last_name 
-                        ? `${firstOrder.customer_details.first_name} ${firstOrder.customer_details.last_name}`
-                        : 'Unknown Customer'}
-                    </p>
-                    <p className="text-sm text-gray-500">{firstOrder.customer_details?.email || 'No email'}</p>
-                    <p className="text-sm text-gray-500">{firstOrder.customer_details?.phone || 'No phone'}</p>
+                    <p className="text-sm text-muted-foreground">Total Products</p>
+                    <div className="text-2xl font-semibold">
+                      {mergedOrders.length}
+                    </div>
                   </div>
-                  {/* Address Information */}
                   <div>
-                    <p className="text-sm text-gray-500">{firstOrder.customer_details?.address_line1 || 'No address'}</p>
-                    {firstOrder.customer_details?.address_line2 && (
-                      <p className="text-sm text-gray-500">{firstOrder.customer_details.address_line2}</p>
-                    )}
-                    <p className="text-sm text-gray-500">
-                      {[
-                        firstOrder.customer_details?.city,
-                        firstOrder.customer_details?.postcode
-                      ].filter(Boolean).join(', ')}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {firstOrder.customer_details?.country || ''}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Total Amount</p>
+                    <div className="text-2xl font-semibold">
+                      £{totalAmount.toFixed(2)}
+                    </div>
                   </div>
                 </div>
-              </Link>
-            </section>
+              </CardContent>
+            </Card>
+
+            {/* Customer Details */}
+            <Card className="shadow-none bg-white">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Customer Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Link 
+                  href={`/customers/${firstOrder.customer_details?.id}`}
+                  className="block space-y-4"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Name</span>
+                      <div className="text-sm">
+                        {firstOrder.customer_details?.first_name} {firstOrder.customer_details?.last_name}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Email</span>
+                      <div className="text-sm">
+                        {firstOrder.customer_details?.email}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Address</span>
+                      <div className="text-sm">
+                        <p>{firstOrder.customer_details?.address_line1}</p>
+                        {firstOrder.customer_details?.address_line2 && (
+                          <p>{firstOrder.customer_details.address_line2}</p>
+                        )}
+                        <p>
+                          {[
+                            firstOrder.customer_details?.city,
+                            firstOrder.customer_details?.postcode
+                          ].filter(Boolean).join(', ')}
+                        </p>
+                        <p>{firstOrder.customer_details?.country}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Phone</span>
+                      <div className="text-sm">
+                        {firstOrder.customer_details?.phone}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Products Table */}
-          <section>
-            <h3 className="text-lg font-medium mt-6 text-gray-900 pb-2 border-b border-gray-200">Products</h3>
-            <div className="overflow-hidden">
-              <table className="min-w-full">
-                <tbody className="divide-y divide-gray-200">
-                  {mergedOrders.map((order) => (
-                    <tr 
-                      key={`${order.product_id}-${order.product_name}`}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="py-4 pl-4 pr-3">
+          {/* Products List */}
+          <div className="mt-6">
+            <div className="space-y-4">
+              {mergedOrders.map((order) => (
+                <div
+                  key={`${order.product_id}-${order.product_name}`}
+                  className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50 bg-white"
+                >
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-medium text-sm">
+                      {order.product_name[0]}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-1 items-center justify-between">
+                    <div className="grid grid-cols-4 flex-1 gap-8 items-center">
+                      <div className="flex flex-col">
                         <Link 
                           href={`/products/${order.product_id}`}
-                          className="group flex items-center"
+                          className="text-sm font-medium hover:underline"
                         >
-                          <div className="h-10 w-10 rounded-full bg-[#00603A]/10 flex items-center justify-center mr-3">
-                            <span className="text-[#00603A] font-medium">
-                              {order.product_name[0]}
-                            </span>
-                          </div>
-                          <span className="text-sm font-medium text-gray-900 group-hover:text-[#00603A]">
-                            {order.product_name}
-                          </span>
+                          {order.product_name}
                         </Link>
-                      </td>
-                      <td className="px-3 py-4 text-sm text-gray-500">{order.product_sku}</td>
-                      <td className="px-3 py-4 text-sm text-gray-500 text-right">{order.total_quantity}</td>
-                      <td className="px-3 py-4 text-sm text-gray-500 text-right">£{order.unit_price.toFixed(2)}</td>
-                      <td className="py-4 pl-3 pr-4 text-sm font-medium text-gray-900 text-right">£{order.total_price.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <p className="text-xs text-muted-foreground">
+                          {order.product_sku}
+                        </p>
+                      </div>
+                      <div className="text-sm">
+                        {order.total_quantity} units
+                      </div>
+                      <div className="text-sm text-center">
+                        £{order.unit_price.toFixed(2)}
+                      </div>
+                      <div className="text-sm font-medium text-right">
+                        £{order.total_price.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </section>
+          </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Batch</h3>
-            <p className="text-sm text-gray-500 mb-4">
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+            <AlertDialogDescription>
               This action cannot be undone. This will permanently delete all orders in batch
-              <span className="font-medium text-gray-900"> #{batchId.slice(0, 8)}</span>.
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              Please type <span className="font-medium text-gray-900">{batchId}</span> to confirm.
-            </p>
-            <input
-              type="text"
+              <span className="font-medium"> #{params.batchId.slice(0, 8)}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
-              placeholder="Type batch ID to confirm"
+              placeholder={`Type "${params.batchId}" to confirm`}
             />
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setDeleteConfirmation('');
-                }}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleteConfirmation !== batchId || isDeleting}
-                className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Batch'}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteConfirmation !== params.batchId || isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Batch'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 

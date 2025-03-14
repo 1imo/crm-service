@@ -29,9 +29,11 @@ export async function POST(
         // Add company ID from session
         imageServiceFormData.append('companyId', session.user.companyId);
 
+        console.log(imageServiceFormData, "Image Data")
+
         try {
             // Forward the request to the image service
-            const uploadResponse = await fetch(`${IMAGE_SERVICE_URL}/api/media/upload`, {
+            const uploadResponse = await fetch(`${IMAGE_SERVICE_URL}/media/upload`, {
                 method: 'POST',
                 headers: {
                     'X-API-Key': CRM_SERVICE_API_KEY!,

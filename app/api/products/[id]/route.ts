@@ -37,10 +37,10 @@ export async function GET(
         try {
             console.log('Fetching images for product:', {
                 productId: id,
-                url: `${IMAGE_SERVICE_URL}/api/media/entity/${id}`
+                url: `${IMAGE_SERVICE_URL}/media/entity/${id}`
             });
 
-            const response = await axios.get(`${IMAGE_SERVICE_URL}/api/media/entity/${id}`, {
+            const response = await axios.get(`${IMAGE_SERVICE_URL}/media/entity/${id}`, {
                 headers: {
                     'X-API-Key': CRM_SERVICE_API_KEY,
                     'X-Service-Name': CRM_SERVICE_NAME
@@ -58,7 +58,7 @@ export async function GET(
                 error: error.message,
                 status: error.response?.status,
                 data: error.response?.data,
-                url: `${IMAGE_SERVICE_URL}/api/media/entity/${id}`
+                url: `${IMAGE_SERVICE_URL}/media/entity/${id}`
             });
             // Return product without images if image fetch fails
             return NextResponse.json(product);
@@ -117,7 +117,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
         // Delete associated images
         try {
-            await axios.delete(`${IMAGE_SERVICE_URL}/api/media/${params.id}`, {
+            await axios.delete(`${IMAGE_SERVICE_URL}/media/${params.id}`, {
                 headers: {
                     'X-API-Key': CRM_SERVICE_API_KEY,
                     'X-Service-Name': CRM_SERVICE_NAME

@@ -1,51 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { CustomerSearch } from '@/components/customers/CustomerSearch';
-import { ProductSearch } from '@/components/products/ProductSearch';
-import { CompanySearch } from '@/components/companies/CompanySearch';
 import { Customer } from '@/types/customer';
 import { Product } from '@/types/product';
-import { Company } from '@/types/company';
-import { motion, AnimatePresence } from 'framer-motion';
-
-interface OrderFormData {
-  customerId: string;
-  companyId: string;
-  items: Array<{
-    productId: string;
-    quantity: number;
-    unitPrice: number;
-  }>;
-}
-
-const initialFormData: OrderFormData = {
-  customerId: '',
-  companyId: '',
-  items: [{
-    productId: '',
-    quantity: 1,
-    unitPrice: 0
-  }]
-};
-
-const steps = [
-  { number: 1, title: '' },
-  { number: 2, title: '' },
-  { number: 3, title: '' }
-];
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CheckIcon, PlusIcon } from "lucide-react";
 
 export function CreateOrderForm({ onComplete }: { onComplete: () => void }) {
-  const [currentStep, setCurrentStep] = useState(1);
+  const router = useRouter();
+  // Form state
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [productQuantities, setProductQuantities] = useState<{ [key: string]: number }>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
-  // Initialize formData without any items
+  // Search states
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  
+  const [productQuery, setProductQuery] = useState('');
+  const [productResults, setProductResults] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [localQuantities, setLocalQuantities] = useState<{ [key: string]: number | null }>(productQuantities);
+
+  // Add new state variables for tracking initial loads
+  const [initialCustomerLoad, setInitialCustomerLoad] = useState(false);
+  const [initialProductLoad, setInitialProductLoad] = useState(false);
+
   const [formData, setFormData] = useState<{
     items: Array<{
       productId: string;
@@ -53,31 +41,59 @@ export function CreateOrderForm({ onComplete }: { onComplete: () => void }) {
       unitPrice: number;
     }>;
   }>({
-    items: [] // Initialize with empty array instead of an empty item
+    items: []
   });
 
-  const handleCustomerSelect = (customer: Customer | null) => {
+  // Customer search
+  useEffect(() => {
+    const searchCustomers = async () => {
+      try {
+        setLoadingCustomers(true);
+        const response = await fetch(`/api/customers/search?q=${encodeURIComponent(customerQuery)}&limit=3`);
+        if (!response.ok) throw new Error('Search failed');
+        const data = await response.json();
+        setCustomerResults(data);
+      } catch (error) {
+        console.error('Search error:', error);
+        setCustomerResults([]);
+      } finally {
+        setLoadingCustomers(false);
+        setInitialCustomerLoad(true);
+      }
+    };
+
+    const debounce = setTimeout(searchCustomers, 300);
+    return () => clearTimeout(debounce);
+  }, [customerQuery]);
+
+  // Product search
+  useEffect(() => {
+    const searchProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        const response = await fetch(`/api/products/search?q=${encodeURIComponent(productQuery)}&limit=3`);
+        if (!response.ok) throw new Error('Search failed');
+        const data = await response.json();
+        setProductResults(data);
+      } catch (error) {
+        console.error('Search error:', error);
+        setProductResults([]);
+      } finally {
+        setLoadingProducts(false);
+        setInitialProductLoad(true);
+      }
+    };
+
+    const debounce = setTimeout(searchProducts, 300);
+    return () => clearTimeout(debounce);
+  }, [productQuery]);
+
+  const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
-    setFormData(prev => ({
-      ...prev,
-      customerId: customer?.id || ''
-    }));
   };
 
-  const handleCompanySelect = (company: Company) => {
-    setFormData(prev => ({
-      ...prev,
-      companyId: company.id
-    }));
-  };
-
-  const handleProductSelect = (product: Product | null, quantity: number = 1) => {
-    if (!product) return;
-
-    const isSelected = selectedProducts.some(p => p.id === product.id);
-    
-    if (isSelected) {
-      // Remove product
+  const handleProductSelect = (product: Product) => {
+    if (selectedProducts.some(p => p.id === product.id)) {
       setSelectedProducts(prev => prev.filter(p => p.id !== product.id));
       setFormData(prev => ({
         ...prev,
@@ -89,17 +105,15 @@ export function CreateOrderForm({ onComplete }: { onComplete: () => void }) {
         return newQuantities;
       });
     } else {
-      // Add new product
-      const newItem = {
-        productId: product.id,
-        quantity: quantity || 1,
-        unitPrice: parseFloat(product.price.toString()) || 0
-      };
-
+      const quantity = localQuantities[product.id] || 1;
       setSelectedProducts(prev => [...prev, product]);
       setFormData(prev => ({
         ...prev,
-        items: [...prev.items, newItem]
+        items: [...prev.items, {
+          productId: product.id,
+          quantity,
+          unitPrice: parseFloat(product.price.toString()) || 0
+        }]
       }));
       setProductQuantities(prev => ({
         ...prev,
@@ -108,264 +122,533 @@ export function CreateOrderForm({ onComplete }: { onComplete: () => void }) {
     }
   };
 
+  const handleQuantityChange = (productId: string, value: string) => {
+    const numericValue = value === '' ? null : parseInt(value);
+    
+    setLocalQuantities(prev => ({
+      ...prev,
+      [productId]: numericValue
+    }));
+
+    if (numericValue !== null && !isNaN(numericValue)) {
+      const product = selectedProducts.find(p => p.id === productId);
+      if (product) {
+        setFormData(prev => ({
+          ...prev,
+          items: prev.items.map(item => 
+            item.productId === productId 
+              ? { ...item, quantity: numericValue }
+              : item
+          )
+        }));
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // If not on the final step, just move to next step
-    if (currentStep < 3) {
-      // Validate current step before proceeding
-      if (currentStep === 1) {
-        if (!selectedCustomer) {
-          setError('Please select a customer');
-          return;
-        }
-        setError('');
-        setCurrentStep(2);
-        return;
-      }
-
-      if (currentStep === 2) {
-        if (selectedProducts.length === 0) {
-          setError('Please select at least one product');
-          return;
-        }
-        setError('');
-        setCurrentStep(3);
-        return;
-      }
+    if (!selectedCustomer) {
+      setError('Please select a customer');
+      return;
     }
 
-    // Final step validation and submission
-    if (currentStep === 3) {
-      if (!selectedCustomer) {
-        setError('Please select a customer');
-        return;
-      }
-
-      if (selectedProducts.length === 0) {
-        setError('Please select at least one product');
-        return;
-      }
-
-      // Only use non-empty items for submission
-      const items = formData.items.filter(item => item.productId !== "");
-
-      // Validate items
-      const hasInvalidItems = items.some(
-        item => 
-          !item.productId || 
-          typeof item.productId !== 'string' ||
-          !item.quantity || 
-          item.quantity <= 0 ||
-          !item.unitPrice || 
-          item.unitPrice <= 0
-      );
-
-      if (hasInvalidItems || items.length === 0) {
-        setError('Please complete all item details');
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const orderData = {
-          customerId: selectedCustomer.id,
-          items: items // Use filtered items
-        };
-
-        const response = await fetch('/api/orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(orderData),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create order');
-        }
-
-        onComplete();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create order');
-      } finally {
-        setLoading(false);
-      }
+    if (selectedProducts.length === 0) {
+      setError('Please select at least one product');
+      return;
     }
-  };
 
-  const renderFormStep = () => {
-    return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2 }}
-        >
-          {(() => {
-            switch (currentStep) {
-              case 1:
-                return (
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Customer
-                      </label>
-                      <CustomerSearch 
-                        onSelect={handleCustomerSelect}
-                        selectedCustomerId={selectedCustomer?.id}
-                      />
-                    </div>
-                  </div>
-                );
+    const items = formData.items.filter(item => item.productId !== "");
 
-              case 2:
-                return (
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Product
-                      </label>
-                      <ProductSearch
-                        onSelect={handleProductSelect}
-                        selectedProductIds={selectedProducts.map(p => p.id)}
-                        quantities={productQuantities}
-                      />
-                    </div>
-                  </div>
-                );
-
-              case 3:
-                return (
-                  <div className="space-y-6">
-                    <h2 className="text-xl font-medium text-gray-900">Verify Order Details</h2>
-                    
-                    {/* Customer Details */}
-                    <div className="bg-white rounded-lg p-6 border border-gray-200">
-                      <h3 className="text-sm font-medium text-gray-900 mb-4">Customer</h3>
-                      <div className="text-sm text-gray-600">
-                        <p>{selectedCustomer?.first_name}  {selectedCustomer?.last_name}</p>
-                        <p>{selectedCustomer?.email}</p>
-                        <p>{selectedCustomer?.phone}</p>
-                      </div>
-                    </div>
-
-                    {/* Products List */}
-                    <div className="bg-white rounded-lg p-6 border border-gray-200">
-                      <h3 className="text-sm font-medium text-gray-900 mb-4">Products</h3>
-                      <div className="space-y-4">
-                        {selectedProducts.map((product, index) => {
-                          const item = formData.items.find(i => i.productId === product.id);
-                          return (
-                            <div key={product.id} className="flex justify-between items-center text-sm">
-                              <div>
-                                <p className="font-medium text-gray-900">{product.name}</p>
-                                <p className="text-gray-500">Quantity: {item?.quantity || 1}</p>
-                              </div>
-                              <p className="text-gray-900">£{((item?.quantity || 1) * (item?.unitPrice || 0)).toFixed(2)}</p>
-                            </div>
-                          );
-                        })}
-                        
-                        {/* Total */}
-                        <div className="pt-4 border-t border-gray-200">
-                          <div className="flex justify-between items-center font-medium text-gray-900">
-                            <p>Total</p>
-                            <p>£{formData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toFixed(2)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-
-              default:
-                return null;
-            }
-          })()}
-        </motion.div>
-      </AnimatePresence>
+    const hasInvalidItems = items.some(
+      item => 
+        !item.productId || 
+        typeof item.productId !== 'string' ||
+        !item.quantity || 
+        item.quantity <= 0 ||
+        !item.unitPrice || 
+        item.unitPrice <= 0
     );
+
+    if (hasInvalidItems || items.length === 0) {
+      setError('Please complete all item details');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const orderData = {
+        customerId: selectedCustomer.id,
+        items: items
+      };
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      onComplete();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create order');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Customer Selection */}
+          <div className="grid grid-cols-3 gap-6">
+            <Card className="col-span-2 w-full py-0">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle>Select Customer</CardTitle>
+                <div className="w-72">
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </CardHeader>
+            </Card>
+
+            <Card className="w-full py-0">
+              <CardHeader>
+                <CardTitle>Selected Customer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Product Selection */}
+          <div className="grid grid-cols-3 gap-6">
+            <Card className="col-span-2 w-full py-0">
+              <CardHeader>
+                <CardTitle>Select Products</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+
+            <Card className="w-full py-0">
+              <CardHeader>
+                <CardTitle>Selected Products</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-4 w-1/3" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Order Summary */}
+          <Card className="w-full py-0">
+            <CardHeader>
+              <CardTitle>Order Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+                <div className="flex justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-2xl w-full mx-auto">
-      {/* Progress Tracker */}
-      <div className="bg-white">
-        <div className="relative px-0">
-          {/* Connecting Lines */}
-          <div className="absolute top-6 left-6 right-6 h-0.5 bg-gray-200">
-            <div 
-              className="h-full bg-[#00603A] transition-all duration-300"
-              style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-            />
-          </div>
-          
-          {/* Step Numbers */}
-          <div className="flex justify-between relative z-10">
-            {steps.map((step) => (
-              <div key={step.number}>
-                <motion.div 
-                  className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-medium ${
-                    currentStep >= step.number 
-                      ? 'bg-[#00603A] text-white' 
-                      : 'bg-gray-200 text-gray-600'
-                  }`}
-                  animate={{
-                    scale: currentStep === step.number ? 1.1 : 1,
-                  }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  {step.number}
-                </motion.div>
-                <div className="mt-2 text-xs text-center text-gray-600">{step.title}</div>
+    <form onSubmit={handleSubmit} className="p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Customer Selection */}
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-2 space-y-4">
+            <Card className="py-0">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle>Select Customer</CardTitle>
+                <div className="w-72">
+                  <Input
+                    type="text"
+                    value={customerQuery}
+                    onChange={(e) => setCustomerQuery(e.target.value)}
+                    placeholder="Search customers..."
+                    className="w-full"
+                  />
+                </div>
+              </CardHeader>
+            </Card>
+
+            {!initialCustomerLoad || loadingCustomers ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="py-0">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            ))}
+            ) : customerResults.length > 0 ? (
+              <div className="space-y-4">
+                {customerResults.map((customer) => (
+                  <Card 
+                    key={customer.id}
+                    className={`hover:bg-muted/50 transition-colors cursor-pointer py-0 ${
+                      selectedCustomer?.id === customer.id ? 'bg-muted' : ''
+                    }`}
+                    onClick={() => handleCustomerSelect(customer)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-primary font-medium">
+                            {customer.first_name?.[0]}{customer.last_name?.[0]}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium truncate">{customer.first_name} {customer.last_name}</p>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                              Customer
+                            </span>
+                            <p className="text-xs text-muted-foreground">Email: {customer.email}</p>
+                            {customer.phone && (
+                              <p className="text-xs text-muted-foreground">Phone: {customer.phone}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-2">
+                          {selectedCustomer?.id === customer.id ? (
+                            <CheckIcon className="h-4 w-4 text-primary" />
+                          ) : (
+                            <PlusIcon className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {[...Array(3 - customerResults.length)].map((_, i) => (
+                  <Card key={`skeleton-${i}`} className="py-0">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-2 text-sm text-muted-foreground text-center">
+                  No customers found
+                </CardContent>
+              </Card>
+            )}
           </div>
+
+          <Card className="w-full py-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Selected Customer</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedCustomer ? (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-lg font-semibold">
+                      {selectedCustomer.first_name} {selectedCustomer.last_name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Customer #{selectedCustomer.id}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm font-medium">Contact Details</p>
+                      <div className="text-sm text-muted-foreground">
+                        <p>{selectedCustomer.email}</p>
+                        {selectedCustomer.phone && <p>{selectedCustomer.phone}</p>}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Shipping Address</p>
+                      <div className="text-sm text-muted-foreground">
+                        <p>{selectedCustomer.address_line1}</p>
+                        {selectedCustomer.address_line2 && <p>{selectedCustomer.address_line2}</p>}
+                        <p>{selectedCustomer.city}, {selectedCustomer.postcode}</p>
+                        <p>{selectedCustomer.county && `${selectedCustomer.county}, `}{selectedCustomer.country}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No customer selected</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6 mt-8">
-          {renderFormStep()}
-          
-          {error && (
-            <div className="text-red-600 text-sm mt-2">
-              {error}
-            </div>
-          )}
-          
-          <div className="flex justify-end pt-6 space-x-6">
-            {currentStep > 1 && (
-              <button
-                type="button"
-                onClick={() => setCurrentStep(currentStep - 1)}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00603A]"
-              >
-                Previous
-              </button>
+        {/* Product Selection */}
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-2 space-y-4">
+            <Card className="py-0">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-2">
+                <CardTitle>Select Products</CardTitle>
+                <div className="w-72">
+                  <Input
+                    type="text"
+                    value={productQuery}
+                    onChange={(e) => setProductQuery(e.target.value)}
+                    placeholder="Search products..."
+                    className="w-full"
+                  />
+                </div>
+              </CardHeader>
+            </Card>
+
+            {!initialProductLoad || loadingProducts ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="py-0">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : productResults.length > 0 ? (
+              <div className="space-y-4">
+                {productResults.map((product) => (
+                  <Card 
+                    key={product.id}
+                    className={`hover:bg-muted/50 transition-colors cursor-pointer py-0 ${
+                      selectedProducts.some(p => p.id === product.id) ? 'bg-muted' : ''
+                    }`}
+                    onClick={() => handleProductSelect(product)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-primary font-medium">
+                            {product.name[0]}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium truncate">{product.name}</p>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                              £{product.price}
+                            </span>
+                            <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
+                            <span className={`text-xs ${
+                              product.stock_quantity > 10 ? 'text-green-600' : 
+                              product.stock_quantity > 0 ? 'text-amber-600' : 'text-red-600'
+                            }`}>
+                              {product.stock_quantity} in stock
+                            </span>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProductSelect(product);
+                          }}
+                        >
+                          {selectedProducts.some(p => p.id === product.id) ? (
+                            <CheckIcon className="h-4 w-4 text-primary" />
+                          ) : (
+                            <PlusIcon className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {[...Array(3 - productResults.length)].map((_, i) => (
+                  <Card key={`skeleton-${i}`} className="py-0">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-2 text-sm text-muted-foreground text-center">
+                  No products found
+                </CardContent>
+              </Card>
             )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#00603A] hover:bg-[#004D2E] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00603A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Creating...
-                </span>
-              ) : (
-                currentStep === 3 ? 'Create Order' : 'Next'
-              )}
-            </button>
           </div>
-        </form>
+
+          <Card className="w-full py-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Selected Products</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedProducts.length > 0 ? (
+                <div className="space-y-6">
+                  {selectedProducts.map((product, index) => {
+                    const quantity = productQuantities[product.id] || 1;
+                    const totalPrice = (quantity * parseFloat(product.price.toString()));
+                    
+                    return (
+                      <div key={product.id} className="space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-base font-medium">{product.name}</p>
+                            <p className="text-sm font-semibold">£{totalPrice.toFixed(2)}</p>
+                          </div>
+                          <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="space-x-4">
+                            <span>£{product.price} × {quantity}</span>
+                            <span className={
+                              product.stock_quantity > 10 ? 'text-green-600' : 
+                              product.stock_quantity > 0 ? 'text-amber-600' : 'text-red-600'
+                            }>
+                              {product.stock_quantity} in stock
+                            </span>
+                          </div>
+                          <Input
+                            type="number"
+                            min="1"
+                            max={product.stock_quantity}
+                            value={quantity}
+                            onChange={(e) => handleQuantityChange(product.id, e.target.value)}
+                            className="w-20 h-8 text-sm"
+                          />
+                        </div>
+                        {product.description && (
+                          <p className="text-sm text-muted-foreground">{product.description}</p>
+                        )}
+                        {index < selectedProducts.length - 1 && <hr className="mt-4" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No products selected</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Order Summary */}
+        <Card className="py-0">
+          <CardHeader>
+            <CardTitle>Order Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center text-sm">
+                <span>Total Items:</span>
+                <span className="font-medium">{selectedProducts.length}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span>Total Amount:</span>
+                <span className="font-medium">
+                  £{formData.items.reduce((sum, item) => {
+                    const product = selectedProducts.find(p => p.id === item.productId);
+                    return sum + (item.quantity * (product?.price || 0));
+                  }, 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {error && (
+          <div className="text-destructive text-sm">
+            {error}
+          </div>
+        )}
+        
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Order...
+              </>
+            ) : (
+              'Create Order'
+            )}
+          </Button>
+        </div>
       </div>
-    </div>
+    </form>
   );
 } 

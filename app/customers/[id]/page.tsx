@@ -1,65 +1,99 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { Customer } from '@/types/customer';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Users, Pencil, Trash2, Loader2, Package, Receipt } from "lucide-react";
 import Link from 'next/link';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface Customer {
+interface Order {
   id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  address_line1: string;
-  address_line2: string;
-  address_line3: string;
-  city: string;
-  county: string;
-  postcode: string;
-  country: string;
+  batch_id: string;
+  company_id: string;
+  customer_id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: string;
+  total_price: string;
+  status: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export default function CustomerDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const router = useRouter();
+export default function CustomerDetailsPage({ params }: { params: { id: string } }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Customer>>({});
   const [saving, setSaving] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchCustomer = async () => {
       try {
-        const response = await fetch(`/api/customers/${id}`);
+        const response = await fetch(`/api/customers/${params.id}`);
         if (!response.ok) throw new Error('Failed to fetch customer');
         const data = await response.json();
         setCustomer(data);
         setFormData(data);
       } catch (err) {
-        setError('Failed to load customer details');
-        console.error('Error:', err);
+        setError('Failed to fetch customer details');
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCustomer();
-  }, [id]);
+  }, [params.id]);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch(`/api/customers/${params.id}/orders`);
+        if (!response.ok) throw new Error('Failed to fetch orders');
+        const data = await response.json();
+        setOrders(data);
+      } catch (err) {
+        console.error('Failed to fetch orders:', err);
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+
+    fetchOrders();
+  }, [params.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/customers/${id}`, {
+      const response = await fetch(`/api/customers/${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -82,11 +116,11 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
   };
 
   const handleDelete = async () => {
-    if (deleteConfirmation !== customer?.first_name + ' ' + customer?.last_name) return;
+    if (deleteConfirmation !== `${customer?.first_name} ${customer?.last_name}`) return;
     
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/customers/${id}`, {
+      const response = await fetch(`/api/customers/${params.id}`, {
         method: 'DELETE',
       });
 
@@ -98,197 +132,297 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
       console.error('Failed to delete customer:', error);
     } finally {
       setIsDeleting(false);
-      setShowDeleteModal(false);
+      setShowDeleteDialog(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00603A]"></div>
-      </div>
-    );
-  }
-
-  if (error || !customer) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-red-500">{error || 'Customer not found'}</div>
-      </div>
-    );
-  }
-
-  const renderField = (label: string, value: string | undefined, fieldName: keyof Customer) => (
-    <div className="col-span-2 sm:col-span-1">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      {isEditing ? (
-        <input
-          type="text"
-          value={formData[fieldName]?.toString() || ''}
-          onChange={(e) => setFormData({ ...formData, [fieldName]: e.target.value })}
-          className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#00603A] focus:border-[#00603A] sm:text-sm"
-        />
-      ) : (
-        <p className="text-sm text-gray-900">{value || '-'}</p>
+  const renderField = (
+    label: string, 
+    value: string | null | undefined, 
+    editField?: ReactNode
+  ) => (
+    <div className="flex flex-col space-y-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {isEditing && editField ? editField : (
+        <span className="text-sm">{value || '—'}</span>
       )}
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header Section */}
-      <div className="bg-[#00603A] text-white">
-        <div className="px-12 py-16">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-semibold">{customer?.first_name} {customer?.last_name}</h1>
-              <p className="mt-1 text-[#B8E1D3]">Customer Details</p>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-[59px] items-center px-6">
+          <div className="flex items-center flex-shrink-0 pr-6">
+            <Users className="h-5 w-5" />
+            <div className="ml-3">
+              <h1 className="text-sm font-medium leading-none">
+                Customer Details
+              </h1>
             </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="inline-flex items-center px-4 py-2 bg-white text-[#00603A] rounded-md hover:bg-[#E8F5F0] transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                {isEditing ? 'Cancel' : 'Edit'}
-              </button>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-[#9B2C2C] text-white rounded-md hover:bg-[#7C2222] transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
+          </div>
+          <Separator orientation="vertical" className="h-8" />
+          <div className="flex-1" />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <Link href={`/customers/${customer?.id}/orders`}>
+                <Package className="h-4 w-4 mr-2" />
+                Orders
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <Link href={`/customers/${customer?.id}/invoices`}>
+                <Receipt className="h-4 w-4 mr-2" />
+                Invoices
+              </Link>
+            </Button>
+            <Separator orientation="vertical" className="h-8" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(!isEditing)}
+              disabled={loading}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Details
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={loading}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="px-12 py-16">
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-12">
-            {/* Personal Information */}
-            <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Personal Information</h3>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('First Name', customer?.first_name, 'first_name')}
-                  {renderField('Last Name', customer?.last_name, 'last_name')}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Email', customer?.email, 'email')}
-                  {renderField('Phone', customer?.phone, 'phone')}
-                </div>
-              </div>
-            </section>
-
-            {/* Address Information */}
-            <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Address</h3>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Address Line 1', customer?.address_line1, 'address_line1')}
-                  {renderField('Address Line 2', customer?.address_line2, 'address_line2')}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('City', customer?.city, 'city')}
-                  {renderField('County', customer?.county, 'county')}
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  {renderField('Postcode', customer?.postcode, 'postcode')}
-                  {renderField('Country', customer?.country, 'country')}
-                </div>
-              </div>
-            </section>
-
-            {/* Additional Information */}
-            <section className="pt-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-8 pb-2 border-b border-gray-200">Additional Information</h3>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Created</label>
-                    <p className="text-sm text-gray-900">{new Date(customer?.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
-                    <p className="text-sm text-gray-900">{new Date(customer?.updated_at).toLocaleDateString()}</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          {/* Action Buttons */}
-          {isEditing && (
-            <div className="flex justify-end space-x-3 mt-12">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00603A]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#00603A] hover:bg-[#004D2E] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00603A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
+      <div className="flex-1 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
+          ) : error ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">{error}</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Top Row: Personal Info and Address side by side */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Personal Information */}
+                <Card className="shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Personal Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("First Name", customer?.first_name,
+                          <Input
+                            value={formData.first_name || customer?.first_name}
+                            onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                          />
+                        )}
+                        {renderField("Last Name", customer?.last_name,
+                          <Input
+                            value={formData.last_name || customer?.last_name}
+                            onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("Email", customer?.email,
+                          <Input
+                            type="email"
+                            value={formData.email || customer?.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          />
+                        )}
+                        {renderField("Phone", customer?.phone,
+                          <Input
+                            type="tel"
+                            value={formData.phone || customer?.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Address Information */}
+                <Card className="shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Address</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("Address Line 1", customer?.address_line1,
+                          <Input
+                            value={formData.address_line1 || customer?.address_line1}
+                            onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
+                          />
+                        )}
+                        {renderField("Address Line 2", customer?.address_line2,
+                          <Input
+                            value={formData.address_line2 || customer?.address_line2}
+                            onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("City", customer?.city,
+                          <Input
+                            value={formData.city || customer?.city}
+                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          />
+                        )}
+                        {renderField("County", customer?.county,
+                          <Input
+                            value={formData.county || customer?.county}
+                            onChange={(e) => setFormData({ ...formData, county: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {renderField("Postcode", customer?.postcode,
+                          <Input
+                            value={formData.postcode || customer?.postcode}
+                            onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
+                          />
+                        )}
+                        {renderField("Country", customer?.country,
+                          <Input
+                            value={formData.country || customer?.country}
+                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Bottom Row: Orders (full width) */}
+              <Card className="shadow-none col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Recent Orders</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loadingOrders ? (
+                    <div className="space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center space-x-4 rounded-lg border p-4">
+                          <Skeleton className="h-4 w-4" />
+                          <Skeleton className="h-9 w-9 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-[200px]" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : orders.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium">No orders found</h3>
+                      <p className="text-sm text-muted-foreground">
+                        This customer hasn't placed any orders yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {orders.map((order) => (
+                        <Link 
+                          href={`/orders/${order.batch_id}`}
+                          key={order.id} 
+                          className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                        >
+                          <div className="flex flex-1 items-center space-x-4">
+                            <Avatar className="h-9 w-9">
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {order.product_name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-1 items-center justify-between">
+                              <div className="grid grid-cols-4 flex-1 gap-8">
+                                <p className="text-sm font-medium">{order.product_name}</p>
+                                <p className="text-sm text-muted-foreground">{order.status}</p>
+                                <p className="text-sm text-muted-foreground">{order.quantity} units</p>
+                                <p className="text-sm text-muted-foreground">£{parseFloat(order.total_price).toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Save Button */}
+              {isEditing && (
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </form>
           )}
-        </form>
+        </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Customer</h3>
-            <p className="text-sm text-gray-500 mb-4">
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+            <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the customer
-              <span className="font-medium text-gray-900"> {customer?.first_name} {customer?.last_name}</span>.
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              Please type <span className="font-medium text-gray-900">{customer?.first_name} {customer?.last_name}</span> to confirm.
-            </p>
-            <input
-              type="text"
+              <span className="font-medium"> {customer?.first_name} {customer?.last_name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#00603A] focus:border-[#00603A] mb-4"
-              placeholder="Type customer name to confirm"
+              placeholder={`Type "${customer?.first_name} ${customer?.last_name}" to confirm`}
             />
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setDeleteConfirmation('');
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00603A]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleteConfirmation !== customer?.first_name + ' ' + customer?.last_name || isDeleting}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Customer'}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteConfirmation !== `${customer?.first_name} ${customer?.last_name}` || isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Customer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 

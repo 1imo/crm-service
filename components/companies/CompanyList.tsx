@@ -15,6 +15,7 @@ export function CompanyList() {
         const response = await fetch('/api/companies');
         if (!response.ok) throw new Error('Failed to fetch companies');
         const data = await response.json();
+        console.log(data)
         setCompanies(data);
       } catch (err) {
         setError('Failed to fetch companies');
@@ -27,7 +28,36 @@ export function CompanyList() {
     fetchCompanies();
   }, []);
 
-  if (loading) return <div className="p-6">Loading companies...</div>;
+  if (loading) return (
+    <div className="bg-white">
+      <div className="px-6 py-4 border-b border-gray-200 border-b-px">
+        <h2 className="text-lg font-medium text-gray-900">All Companies</h2>
+      </div>
+      <div>
+        {[...Array(5)].map((_, index) => (
+          <div 
+            key={index}
+            className="block px-6 py-4 border-t border-gray-200"
+          >
+            <div className="grid grid-cols-6 items-center gap-4">
+              <div className="col-span-2 flex items-center space-x-4">
+                <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-200 animate-pulse" />
+                <div className="min-w-0 flex-1">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-24" />
+                </div>
+              </div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-16" />
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-16" />
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-16" />
+              <div className="flex justify-end">
+                <div className="h-5 w-5 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
