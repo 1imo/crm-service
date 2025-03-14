@@ -5,6 +5,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import { Providers } from './providers';
 import { usePathname } from 'next/navigation';
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -32,6 +33,7 @@ export default function RootLayout({
             </main>
           </div>
         </Providers>
+        <Toaster />
       </body>
     </html>
   );

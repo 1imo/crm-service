@@ -73,8 +73,8 @@ export class OrderRepository {
                     `INSERT INTO "order" (
                         customer_id, company_id, batch_id,
                         product_name, quantity, unit_price,
-                        total_price, status
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft')
+                        total_price, status, product_id
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8)
                     RETURNING *`,
                     [
                         data.customerId,
@@ -83,7 +83,8 @@ export class OrderRepository {
                         product.name,
                         item.quantity,
                         product.price,
-                        product.price * item.quantity
+                        product.price * item.quantity,
+                        product.id
                     ]
                 );
 

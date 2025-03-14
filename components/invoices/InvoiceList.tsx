@@ -22,9 +22,11 @@ interface Invoice {
   invoice_number: string;
   customer_name: string;
   amount: string;
+  currency: string;
   status: string;
   due_date: string;
   created_at: string;
+  reference: string;
 }
 
 export function InvoiceList() {
@@ -38,6 +40,7 @@ export function InvoiceList() {
         const response = await fetch('/api/invoices');
         if (!response.ok) throw new Error('Failed to fetch invoices');
         const data = await response.json();
+        console.log(data);
         setInvoices(data);
       } catch (err) {
         setError('Failed to fetch invoices');
@@ -127,12 +130,12 @@ export function InvoiceList() {
                   {invoice.customer_name}
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                  #{invoice.invoice_number}
+                  Reference: {invoice.reference}
                 </p>
               </div>
               
               <div className="text-sm">
-                £{invoice.amount}
+                {invoice.currency}{invoice.amount}
               </div>
               
               <div className="text-sm text-muted-foreground">
