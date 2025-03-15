@@ -121,3 +121,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes expand-nav {
+  from {
+    width: 60px;
+  }
+  to {
+    width: 256px;
+  }
+}
+
+@keyframes collapse-nav {
+  from {
+    width: 256px;
+  }
+  to {
+    width: 60px;
+  }
+}
+
+.sheet-content-nav {
+  animation: none !important;
+  transition: width 200ms ease;
+}
+
+.sheet-content-nav[data-state='open'] {
+  animation: expand-nav 200ms ease !important;
+}
+
+.sheet-content-nav[data-state='closed'] {
+  animation: collapse-nav 200ms ease !important;
+}

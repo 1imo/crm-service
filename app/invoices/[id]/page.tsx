@@ -27,42 +27,80 @@ export default function InvoiceDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchInvoice = async () => {
       try {
         const response = await fetch(`/api/invoices/${params.id}`);
         if (!response.ok) throw new Error('Failed to fetch invoice');
         
         const html = await response.text();
+        if (!html) throw new Error('Received empty invoice content');
         
-        const iframe = document.getElementById('invoice-iframe') as HTMLIFrameElement;
-        if (iframe && iframe.contentWindow) {
-          iframe.contentWindow.document.open();
-          iframe.contentWindow.document.write(html);
-          iframe.contentWindow.document.close();
+        // Add delay to ensure iframe is mounted
+        setTimeout(() => {
+          if (!isMounted) return;
 
-          const updateIframeHeight = () => {
-            if (iframe.contentWindow) {
-              const height = iframe.contentWindow.document.documentElement.scrollHeight;
-              iframe.style.height = `${height}px`;
+          const iframe = document.getElementById('invoice-iframe') as HTMLIFrameElement;
+          if (!iframe) {
+            console.error('Iframe not found, retrying...');
+            // Retry after a short delay
+            setTimeout(fetchInvoice, 100);
+            return;
+          }
+
+          const loadIframe = () => {
+            try {
+              if (!iframe.contentWindow) throw new Error('No iframe content window');
+              
+              iframe.contentWindow.document.open();
+              iframe.contentWindow.document.write(html);
+              iframe.contentWindow.document.close();
+
+              const updateIframeHeight = () => {
+                if (iframe.contentWindow) {
+                  const height = iframe.contentWindow.document.documentElement.scrollHeight;
+                  iframe.style.height = `${height}px`;
+                }
+              };
+
+              setTimeout(updateIframeHeight, 100);
+              iframe.onload = updateIframeHeight;
+              window.addEventListener('resize', updateIframeHeight);
+
+              return () => window.removeEventListener('resize', updateIframeHeight);
+            } catch (err) {
+              console.error('Error loading iframe content:', err);
+              setError('Failed to display invoice content');
             }
           };
 
-          iframe.onload = updateIframeHeight;
-          window.addEventListener('resize', updateIframeHeight);
+          if (iframe.contentWindow) {
+            loadIframe();
+          } else {
+            iframe.onload = loadIframe;
+          }
+        }, 0);
 
-          return () => window.removeEventListener('resize', updateIframeHeight);
-        }
       } catch (err) {
-        setError('Failed to load invoice');
-        console.error(err);
+        if (isMounted) {
+          console.error('Error in fetchInvoice:', err);
+          setError(err instanceof Error ? err.message : 'Failed to load invoice');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     if (params.id) {
       fetchInvoice();
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [params.id]);
 
   const handleSendToClient = async () => {
