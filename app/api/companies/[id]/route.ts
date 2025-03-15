@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CompanyRepository } from '@/repositories/CompanyRepository';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/options';
 
 export async function GET(
-    request: NextRequest,
+    request: Request,
     { params }: { params: { id: string } }
 ) {
     try {
@@ -38,7 +38,7 @@ export async function GET(
 }
 
 export async function PUT(
-    request: NextRequest,
+    request: Request,
     { params }: { params: { id: string } }
 ) {
     try {
@@ -83,7 +83,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-    request: NextRequest,
+    request: Request,
     { params }: { params: { id: string } }
 ) {
     try {
