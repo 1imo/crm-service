@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
             email: String(formData.get('email') || ''),
             phone: String(formData.get('phone') || ''),
             addressLine1: String(formData.get('addressLine1') || ''),
-            addressLine2: formData.get('addressLine2') ? String(formData.get('addressLine2')) : undefined,
+            addressLine2: formData.get('addressLine2') ? String(formData.get('addressLine2')) : '',
             city: String(formData.get('city') || ''),
             county: String(formData.get('county') || ''),
             postcode: String(formData.get('postcode') || ''),
