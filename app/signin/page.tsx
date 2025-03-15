@@ -60,7 +60,7 @@ export default function SignIn() {
                         </div>
                     </div>
 
-                    <Card className="border bg-background/95 backdrop-blur w-1 shadow-none">
+                    <Card className="border bg-background/95 backdrop-blur w-full shadow-none">
                         <CardHeader>
                             <CardTitle>Welcome back</CardTitle>
                             <CardDescription>
