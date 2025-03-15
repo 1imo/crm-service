@@ -23,5 +23,6 @@ jobs:
           git fetch
           git pull
           npm install
+          npm run build
           npx pm2 restart 7
         EOF
