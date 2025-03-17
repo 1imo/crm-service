@@ -25,11 +25,35 @@ export class ProductRepository {
         return result.rows;
     }
 
-    async create(data: Partial<Product>, companyId: string): Promise<Product> {
+    async findExisting(data: {
+        name: string;
+        company_id: string;
+    }): Promise<Product | null> {
+        const result = await this.db.query(
+            `SELECT * FROM product 
+            WHERE LOWER(name) = LOWER($1) 
+            AND company_id = $2 
+            LIMIT 1`,
+            [data.name, data.company_id]
+        );
+        return result.rows[0] || null;
+    }
+
+    async create(data: Omit<Product, 'id' | 'created_at' | 'updated_at'>, companyId: string): Promise<Product> {
+        // Check for existing product by name
+        const existingProduct = await this.findExisting({
+            name: data.name,
+            company_id: companyId
+        });
+
+        if (existingProduct) {
+            return existingProduct;
+        }
+
         const result = await this.db.query(
             `INSERT INTO product (
                 name, description, sku, price, stock_quantity, company_id
-            ) VALUES ($1, $2, $3, $4, $5, $6) 
+            ) VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *`,
             [
                 data.name,
@@ -40,6 +64,7 @@ export class ProductRepository {
                 companyId
             ]
         );
+
         return result.rows[0];
     }
 

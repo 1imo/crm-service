@@ -9,6 +9,61 @@ export class CustomerRepository {
         this.db = pools.orders;
     }
 
+    async findExisting(data: {
+        email?: string;
+        phone?: string;
+        first_name?: string;
+        last_name?: string;
+        company_id: string
+    }): Promise<Customer | null> {
+        // Build dynamic query based on provided fields
+        const conditions = [];
+        const values = [];
+        let paramCount = 1;
+
+        if (data.email) {
+            conditions.push(`email = $${paramCount}`);
+            values.push(data.email);
+            paramCount++;
+        }
+
+        if (data.phone) {
+            conditions.push(`phone = $${paramCount}`);
+            values.push(data.phone);
+            paramCount++;
+        }
+
+        if (data.first_name && data.last_name) {
+            conditions.push(`(first_name = $${paramCount} AND last_name = $${paramCount + 1})`);
+            values.push(data.first_name, data.last_name);
+            paramCount += 2;
+        }
+
+        // Always include company_id
+        conditions.push(`company_id = $${paramCount}`);
+        values.push(data.company_id);
+
+        if (conditions.length === 1) {
+            return null; // Only company_id condition exists
+        }
+
+        const query = `
+            SELECT * FROM customer 
+            WHERE ${conditions.join(' AND ')} 
+            AND company_id = $${values.length}
+            LIMIT 1
+        `;
+
+        console.log(query)
+
+
+
+        const result = await this.db.query(query, values);
+        console.log(result.rows[0], "EXISTING CUSTOMER")
+
+        return result.rows[0] || null;
+    }
+
     async create(data: Omit<Customer, 'id' | 'created_at' | 'updated_at'> & { company_id: string }): Promise<Customer> {
         const result = await this.db.query(
             `INSERT INTO customer (

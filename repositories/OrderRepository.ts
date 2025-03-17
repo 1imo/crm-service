@@ -13,6 +13,7 @@ interface OrderData {
     customerId: string;
     companyId: string;
     items: OrderItem[];
+    batchId?: string;
 }
 
 export class OrderRepository {

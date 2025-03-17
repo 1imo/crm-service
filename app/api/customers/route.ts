@@ -41,11 +41,29 @@ export async function POST(request: NextRequest) {
 
         const data = await request.json();
         const customerRepository = new CustomerRepository();
+
+        // Check for existing customer first
+        const existingCustomer = await customerRepository.findExisting({
+            email: data.email,
+            phone: data.phone,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            company_id: session.user.companyId
+        });
+
+        console.log("EXISITNG CUSTOMER", existingCustomer)
+
+        if (existingCustomer) {
+            return NextResponse.json(existingCustomer);
+        }
+
+        // If no existing customer, create new one
         const customer = await customerRepository.create({
             ...data,
             company_id: session.user.companyId
         });
-        return NextResponse.json(customer, { status: 201 });
+
+        return NextResponse.json(customer);
     } catch (error) {
         console.error('Failed to create customer:', error);
         return NextResponse.json(

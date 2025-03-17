@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
                 description: description?.toString() || '',
                 sku: sku?.toString() || '',
                 price: priceStr ? parseFloat(priceStr.toString()) : 0,
-                stock_quantity: stockQuantityStr ? parseInt(stockQuantityStr.toString()) : 0
+                stock_quantity: stockQuantityStr ? parseInt(stockQuantityStr.toString()) : 1,
+                companyId: session.user.companyId
             },
             session.user.companyId
         );
