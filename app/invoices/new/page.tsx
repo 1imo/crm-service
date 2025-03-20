@@ -183,14 +183,18 @@ export default function NewInvoicePage() {
                         <Input
                           type="number"
                           placeholder="Price"
-                          value={item.basePrice}
+                          value={item.basePrice || ''}
                           onChange={(e) => {
                             const newItems = [...items];
-                            newItems[index] = { ...item, basePrice: parseFloat(e.target.value) || 0 };
-                            setItems(newItems);
+                            const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                            // Allow negative values only if description starts with "DISCOUNT"
+                            if (item.name.startsWith('DISCOUNT') || value >= 0) {
+                              newItems[index] = { ...item, basePrice: value };
+                              setItems(newItems);
+                            }
                           }}
                           step="0.01"
-                          min="0"
+                          min={item.name.startsWith('DISCOUNT') ? undefined : "0"}
                         />
                       </div>
                       <div className="w-32 flex items-center justify-between">
@@ -254,4 +258,4 @@ export default function NewInvoicePage() {
       </div>
     </div>
   );
-} 
+}
