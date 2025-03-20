@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
         pathname: '/api/media/**',
       },
     ],
+    domains: ['media.papstore.co.uk'],
   },
   eslint: {
     ignoreDuringBuilds: true,

@@ -307,6 +307,8 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
                             alt="Company logo"
                             fill
                             className="object-contain"
+                            unoptimized
+                            priority
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-muted">
@@ -541,4 +543,4 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
       </AlertDialog>
     </div>
   );
-} 
+}
