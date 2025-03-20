@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Send, Trash2, Loader2 } from "lucide-react";
+import { Send, Trash2, Loader2, Share, Mail, Link as LinkIcon, Receipt, FileText } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useParams, useRouter } from 'next/navigation';
 import {
   AlertDialog,
@@ -15,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -126,7 +133,6 @@ export default function InvoiceDetailPage() {
       toast({
         title: "Error",
         description: "Failed to send invoice. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsSending(false);
@@ -156,7 +162,6 @@ export default function InvoiceDetailPage() {
       toast({
         title: "Error",
         description: "Failed to delete invoice. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
@@ -164,36 +169,100 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleCopyLink = async () => {
+    let shareUrl = '';
+    try {
+      const response = await fetch(`/api/invoices/${params.id}/share`);
+      if (!response.ok) throw new Error('Failed to get share link');
+      const { url } = await response.json();
+      shareUrl = url;
+      
+      let copied = false;
+
+      // Try modern clipboard API first
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        copied = true;
+      } catch (e) {
+        // Modern API failed, try execCommand
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = shareUrl;
+          textarea.style.position = 'absolute';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          copied = document.execCommand('copy');
+          document.body.removeChild(textarea);
+        } catch (e2) {
+          console.error('Clipboard fallback failed:', e2);
+        }
+      }
+
+      if (!copied) {
+        throw new Error('Unable to copy to clipboard');
+      }
+
+      toast({
+        title: "Link Copied",
+        description: "Share link has been copied to clipboard.",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error copying link:', error);
+      toast({
+        title: "Error",
+        description: shareUrl 
+          ? `Failed to copy share link. Please copy manually: ${shareUrl}`
+          : "Failed to get share link",
+        duration: 5000,
+      });
+    }
+  };
+
   const Header = () => (
     <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-[59px] items-center px-6 gap-4 justify-between">
-        <h1 className="text-sm font-medium">Invoice Details</h1>
-        <div className="flex gap-2">
-          <Button 
-            variant="default" 
-            onClick={handleSendToClient}
-            disabled={loading || !!error || isSending}
-          >
-            {isSending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
-            {isSending ? "Sending..." : "Send to Client"}
-          </Button>
-          <Button 
-            variant="destructive" 
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={loading || !!error || isDeleting}
-          >
-            {isDeleting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="mr-2 h-4 w-4" />
-            )}
-            {isDeleting ? "Deleting..." : "Delete Invoice"}
-          </Button>
+      <div className="flex h-[59px] items-center px-6 gap-4">
+        <div className="flex items-center flex-shrink-0">
+          <Receipt className="h-5 w-5" />
+          <div className="ml-3">
+            <h1 className="text-sm font-medium leading-none">Invoice Details</h1>
+          </div>
         </div>
+        <Separator orientation="vertical" className="h-8" />
+        <div className="flex-1"></div> {/* Spacer */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+            <Share className="h-4 w-4 mr-2" />
+            <span>Share</span>
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-2">
+              <path d="M3.13523 6.15803C3.3241 5.95657 3.64052 5.94637 3.84197 6.13523L7.5 9.56464L11.158 6.13523C11.3595 5.94637 11.6759 5.95657 11.8648 6.15803C12.0536 6.35949 12.0434 6.67591 11.842 6.86477L7.84197 10.6148C7.64964 10.7951 7.35036 10.7951 7.15803 10.6148L3.15803 6.86477C2.95657 6.67591 2.94637 6.35949 3.13523 6.15803Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+            </svg>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[180px]">
+            <DropdownMenuItem onClick={handleSendToClient} className="px-4 py-2 gap-3 whitespace-nowrap">
+              <FileText className="h-4 w-4 flex-shrink-0" />
+              <span>Generate Invoice</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleCopyLink} className="px-4 py-2 gap-3 whitespace-nowrap">
+              <LinkIcon className="h-4 w-4 flex-shrink-0" />
+              <span>Copy Share Link</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Separator orientation="vertical" className="h-8" />
+        <Button 
+          variant="destructive" 
+          onClick={() => setShowDeleteDialog(true)}
+          disabled={loading || !!error || isDeleting}
+        >
+          {isDeleting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="mr-2 h-4 w-4" />
+          )}
+          {isDeleting ? "Deleting..." : "Delete Invoice"}
+        </Button>
       </div>
     </div>
   );
@@ -211,7 +280,7 @@ export default function InvoiceDetailPage() {
             </div>
           ) : error ? (
             <div className="h-full w-full flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">{error}</p>
+              <p className="text-sm text-white">{error}</p>
             </div>
           ) : (
             <iframe 
@@ -227,8 +296,8 @@ export default function InvoiceDetailPage() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-white">Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/70">
               This action cannot be undone. This will permanently delete the invoice
               and remove all associated data.
             </AlertDialogDescription>
@@ -249,4 +318,4 @@ export default function InvoiceDetailPage() {
       </AlertDialog>
     </>
   );
-} 
+}
