@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, use, useRef, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Product } from '@/types/product';
 import { Button } from "@/components/ui/button";
@@ -33,10 +33,11 @@ interface ProductImage {
 export default function ProductDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(searchParams.get('edit') === 'true');
     const [formData, setFormData] = useState<Partial<Product>>({});
     const [saving, setSaving] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -81,15 +82,19 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
     };
 
     const handleEditToggle = () => {
-        setIsEditing(!isEditing);
-        if (!isEditing) {
-            setFormData(product || {});
-        } else {
+        if (isEditing) {
+            // If we're exiting edit mode, remove the edit parameter
+            router.replace(`/products/${id}`);
+            setIsEditing(false);
             setFormData(product || {});
             setNewImages(null);
             // Cleanup preview URLs
             imagePreviews.forEach(preview => URL.revokeObjectURL(preview));
             setImagePreviews([]);
+        } else {
+            // If we're entering edit mode, add the edit parameter
+            router.replace(`/products/${id}?edit=true`);
+            setIsEditing(true);
         }
     };
 
@@ -157,6 +162,9 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
             imagePreviews.forEach(preview => URL.revokeObjectURL(preview));
             setImagePreviews([]);
             router.refresh();
+
+            // After successful update, remove edit parameter from URL
+            router.replace(`/products/${id}`);
         } catch (error) {
             console.error('Failed to update product:', error);
         } finally {
@@ -247,17 +255,35 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                     <div className="flex-1" />
                     <div className="flex items-center gap-2">
                         <Button
-                            variant="outline"
+                            variant={isEditing ? "default" : "outline"}
                             size="sm"
-                            onClick={handleEditToggle}
+                            onClick={isEditing ? handleSubmit : handleEditToggle}
+                            disabled={loading || (isEditing && saving)}
                         >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            {isEditing ? 'Cancel' : 'Edit'}
+                            {isEditing ? (
+                                saving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Save Changes
+                                    </>
+                                )
+                            ) : (
+                                <>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Edit
+                                </>
+                            )}
                         </Button>
                         <Button
                             variant="destructive"
                             size="sm"
                             onClick={() => setShowDeleteDialog(true)}
+                            disabled={loading}
                         >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
@@ -345,22 +371,6 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                                 </CardContent>
                             </Card>
                         </div>
-
-                        {/* Save Button */}
-                        {isEditing && (
-                            <div className="flex justify-end">
-                                <Button type="submit" disabled={saving}>
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        'Save Changes'
-                                    )}
-                                </Button>
-                            </div>
-                        )}
                     </form>
                 </div>
             </div>

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import {
-  Receipt,
+  FileText,
   Download,
   Plus,
   Search,
@@ -16,13 +16,16 @@ import {
 import { InvoiceList } from '@/components/invoices/InvoiceList';
 
 export default function InvoicesPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
   return (
     <div className="flex flex-col h-full">
       {/* Header + Filters and Actions */}
       <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-[59px] items-center px-6 gap-4">
           <div className="flex items-center flex-shrink-0">
-            <Receipt className="h-5 w-5" />
+            <FileText className="h-5 w-5" />
             <div className="ml-3">
               <h1 className="text-sm font-medium leading-none">Manage your invoices</h1>
             </div>
@@ -34,19 +37,23 @@ export default function InvoicesPage() {
               type="search"
               placeholder="Search invoices..."
               className="w-full pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select defaultValue="all">
+          <Select 
+            value={statusFilter} 
+            onValueChange={setStatusFilter}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Invoices</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="awaiting payment">Awaiting Payment</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="icon">
@@ -68,7 +75,7 @@ export default function InvoicesPage() {
 
       {/* Main Content */}
       <div className="p-6">
-        <InvoiceList />
+        <InvoiceList searchQuery={searchQuery} statusFilter={statusFilter} />
       </div>
     </div>
   );

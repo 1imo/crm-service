@@ -16,6 +16,8 @@ import {
 import { ProductList } from '@/components/products/ProductList';
 
 export default function ProductsPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+
   return (
     <div className="flex flex-col h-full">
       {/* Header + Filters and Actions */}
@@ -34,6 +36,8 @@ export default function ProductsPage() {
               type="search"
               placeholder="Search products..."
               className="w-full pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <Select defaultValue="all">
@@ -65,7 +69,7 @@ export default function ProductsPage() {
 
       {/* Main Content */}
       <div className="p-6">
-        <ProductList />
+        <ProductList searchQuery={searchQuery} />
       </div>
     </div>
   );

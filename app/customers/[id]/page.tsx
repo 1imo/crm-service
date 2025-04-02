@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, ReactNode, use } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Customer } from '@/types/customer';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,11 +38,14 @@ interface Order {
   updated_at: string;
 }
 
-export default function CustomerDetailsPage({ params }: { params: { id: string } }) {
+export default function CustomerDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(searchParams.get('edit') === 'true');
   const [formData, setFormData] = useState<Partial<Customer>>({});
   const [saving, setSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -50,12 +53,11 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
   const [isDeleting, setIsDeleting] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
-  const router = useRouter();
 
   useEffect(() => {
     const fetchCustomer = async () => {
       try {
-        const response = await fetch(`/api/customers/${params.id}`);
+        const response = await fetch(`/api/customers/${resolvedParams.id}`);
         if (!response.ok) throw new Error('Failed to fetch customer');
         const data = await response.json();
         setCustomer(data);
@@ -69,12 +71,12 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
     };
 
     fetchCustomer();
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch(`/api/customers/${params.id}/orders`);
+        const response = await fetch(`/api/customers/${resolvedParams.id}/orders`);
         if (!response.ok) throw new Error('Failed to fetch orders');
         const data = await response.json();
         setOrders(data);
@@ -86,14 +88,14 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
     };
 
     fetchOrders();
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/customers/${params.id}`, {
+      const response = await fetch(`/api/customers/${resolvedParams.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -107,6 +109,7 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
       setCustomer(updatedData);
       setFormData(updatedData);
       setIsEditing(false);
+      router.replace(`/customers/${resolvedParams.id}`);
       router.refresh();
     } catch (error) {
       console.error('Failed to update customer:', error);
@@ -115,12 +118,22 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
     }
   };
 
+  const toggleEditMode = () => {
+    if (isEditing) {
+      router.replace(`/customers/${resolvedParams.id}`);
+      setIsEditing(false);
+    } else {
+      router.replace(`/customers/${resolvedParams.id}?edit=true`);
+      setIsEditing(true);
+    }
+  };
+
   const handleDelete = async () => {
     if (deleteConfirmation !== `${customer?.first_name} ${customer?.last_name}`) return;
     
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/customers/${params.id}`, {
+      const response = await fetch(`/api/customers/${resolvedParams.id}`, {
         method: 'DELETE',
       });
 
@@ -187,13 +200,29 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
             </Button>
             <Separator orientation="vertical" className="h-8" />
             <Button
-              variant="outline"
+              variant={isEditing ? "default" : "outline"}
               size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-              disabled={loading}
+              onClick={isEditing ? handleSubmit : toggleEditMode}
+              disabled={loading || (isEditing && saving)}
             >
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit Details
+              {isEditing ? (
+                saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )
+              ) : (
+                <>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Details
+                </>
+              )}
             </Button>
             <Button
               variant="destructive"
@@ -373,22 +402,6 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                   )}
                 </CardContent>
               </Card>
-
-              {/* Save Button */}
-              {isEditing && (
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Save Changes'
-                    )}
-                  </Button>
-                </div>
-              )}
             </form>
           )}
         </div>

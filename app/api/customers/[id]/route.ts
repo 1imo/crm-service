@@ -78,7 +78,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         }
 
         const customerRepository = new CustomerRepository();
-        await customerRepository.delete(params.id, session.user.companyId);
+        const result = await customerRepository.delete(params.id, session.user.companyId);
+
+        if (!result.success) {
+            return NextResponse.json(
+                { error: result.error },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

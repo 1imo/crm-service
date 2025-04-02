@@ -16,6 +16,9 @@ import {
 import { OrderList } from '@/components/orders/OrderList';
 
 export default function OrdersPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
   return (
     <div className="flex flex-col h-full">
       {/* Header + Filters and Actions */}
@@ -34,9 +37,14 @@ export default function OrdersPage() {
               type="search"
               placeholder="Search orders..."
               className="w-full pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select defaultValue="all">
+          <Select 
+            value={statusFilter} 
+            onValueChange={setStatusFilter}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -67,7 +75,7 @@ export default function OrdersPage() {
 
       {/* Main Content */}
       <div className="p-6">
-        <OrderList />
+        <OrderList searchQuery={searchQuery} statusFilter={statusFilter} />
       </div>
     </div>
   );

@@ -7,6 +7,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,6 +29,7 @@ import {
   ExternalLink,
   ClipboardList,
 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface BatchOrder {
   batch_id: string;
@@ -37,10 +46,20 @@ interface BatchOrder {
   }[];
 }
 
-export function OrderList() {
+interface OrderListProps {
+  searchQuery: string;
+  statusFilter: string;
+}
+
+export function OrderList({ searchQuery, statusFilter }: OrderListProps) {
   const [batchOrders, setBatchOrders] = useState<BatchOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  // Add state for delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -109,6 +128,57 @@ export function OrderList() {
     return 'cancelled';
   };
 
+  // Updated delete handler with correct API path
+  const handleDeleteBatch = async (batchId: string) => {
+    try {
+      const response = await fetch(`/api/orders/batch/${batchId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete order batch');
+      }
+
+      // Remove the deleted batch from state
+      setBatchOrders(prev => prev.filter(batch => batch.batch_id !== batchId));
+      
+      toast({
+        title: "Order batch deleted",
+        description: "The order batch has been successfully deleted.",
+      });
+    } catch (error) {
+      console.error('Error deleting order batch:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the order batch. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      // Close the dialog
+      setDeleteDialogOpen(false);
+      setBatchToDelete(null);
+    }
+  };
+
+  // Function to open delete dialog
+  const openDeleteDialog = (batchId: string) => {
+    setBatchToDelete(batchId);
+    setDeleteDialogOpen(true);
+  };
+
+  // Filter orders based on search query and status
+  const filteredBatchOrders = batchOrders.filter(batch => {
+    const matchesSearch = searchQuery.toLowerCase() === '' || 
+      batch.batch_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      batch.merged_orders.some(order => 
+        order.product_name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    const matchesStatus = statusFilter === 'all' || batch.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -144,97 +214,135 @@ export function OrderList() {
     );
   }
 
-  if (batchOrders.length === 0) {
+  if (filteredBatchOrders.length === 0 && !loading) {
     return (
       <div className="flex h-[450px] shrink-0 items-center justify-center rounded-md border border-dashed">
         <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
           <ClipboardList className="h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No orders found</h3>
           <p className="mb-4 mt-2 text-sm text-muted-foreground">
-            Get started by creating a new order.
+            {searchQuery || statusFilter !== 'all' 
+              ? "Try adjusting your search or filters"
+              : "Get started by creating a new order."}
           </p>
-          <Button asChild size="sm">
-            <Link href="/orders/new">Create order</Link>
-          </Button>
+          {!searchQuery && statusFilter === 'all' && (
+            <Button asChild size="sm">
+              <Link href="/orders/new">Create order</Link>
+            </Button>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {batchOrders.map((batch) => (
-        <div
-          key={batch.batch_id}
-          className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50 bg-white"
-        >
-          <Checkbox />
-          <div className="flex flex-1 items-center space-x-4">
-            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-primary font-medium text-sm">
-                {batch.batch_id.slice(0, 2)}
-              </span>
-            </div>
-            
-            <div className="flex flex-1 items-center justify-between">
-              <div className="grid grid-cols-4 flex-1 gap-8 items-center">
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium">#{batch.batch_id.slice(0, 8)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {batch.created_at.toLocaleDateString('en-GB')}
-                  </p>
-                </div>
-                <div className="flex flex-col">
-                  <p className="text-sm">{batch.product_variety} products</p>
-                  <p className="text-xs text-muted-foreground">
-                    {batch.total_quantity} items
-                  </p>
-                </div>
-                <p className="text-sm text-center">
-                  £{batch.total_amount.toFixed(2)}
-                </p>
-                <div className="flex justify-center">
-                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                    batch.status === 'completed' ? 'bg-green-50 text-green-700' :
-                    batch.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
-                    batch.status === 'draft' ? 'bg-blue-50 text-blue-700' :
-                    'bg-red-50 text-red-700'
-                  }`}>
-                    {batch.status.charAt(0).toUpperCase() + batch.status.slice(1)}
-                  </span>
-                </div>
+    <>
+      <div className="space-y-4">
+        {filteredBatchOrders.map((batch) => (
+          <div
+            key={batch.batch_id}
+            className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50 bg-white"
+          >
+            <Checkbox />
+            <div className="flex flex-1 items-center space-x-4">
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-primary font-medium text-sm">
+                  {batch.batch_id.slice(0, 2)}
+                </span>
               </div>
               
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[160px]">
-                  <DropdownMenuItem asChild>
-                    <Link href={`/orders/${batch.batch_id}`} className="cursor-pointer">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      View details
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href={`/orders/${batch.batch_id}/edit`} className="cursor-pointer">
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex flex-1 items-center justify-between">
+                <div className="grid grid-cols-4 flex-1 gap-8 items-center">
+                  <div className="flex flex-col">
+                    <p className="text-sm font-medium">#{batch.batch_id.slice(0, 8)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {batch.created_at.toLocaleDateString('en-GB')}
+                    </p>
+                  </div>
+                  <div className="flex flex-col">
+                    <p className="text-sm">{batch.product_variety} products</p>
+                    <p className="text-xs text-muted-foreground">
+                      {batch.total_quantity} items
+                    </p>
+                  </div>
+                  <p className="text-sm text-center">
+                    £{batch.total_amount.toFixed(2)}
+                  </p>
+                  <div className="flex justify-center">
+                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                      batch.status === 'completed' ? 'bg-green-50 text-green-700' :
+                      batch.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
+                      batch.status === 'draft' ? 'bg-blue-50 text-blue-700' :
+                      'bg-red-50 text-red-700'
+                    }`}>
+                      {batch.status.charAt(0).toUpperCase() + batch.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[160px]">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/orders/${batch.batch_id}`} className="cursor-pointer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        View details
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/orders/${batch.batch_id}/edit`} className="cursor-pointer">
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="text-destructive"
+                      onClick={() => openDeleteDialog(batch.batch_id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Order Batch</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this order batch? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setBatchToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => batchToDelete && handleDeleteBatch(batchToDelete)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 } 

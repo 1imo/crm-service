@@ -165,10 +165,34 @@ export class CustomerRepository {
         return result.rows[0];
     }
 
-    async delete(id: string, companyId: string): Promise<void> {
-        await this.db.query(
-            'DELETE FROM customer WHERE id = $1 AND company_id = $2',
+    async hasAssociatedOrders(id: string, companyId: string): Promise<boolean> {
+        const result = await this.db.query(
+            'SELECT EXISTS(SELECT 1 FROM "order" WHERE customer_id = $1 AND company_id = $2)',
             [id, companyId]
         );
+        return result.rows[0].exists;
+    }
+
+    async delete(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
+        try {
+            // First delete all associated orders
+            await this.db.query(
+                'DELETE FROM "order" WHERE customer_id = $1 AND company_id = $2',
+                [id, companyId]
+            );
+
+            // Then delete the customer
+            await this.db.query(
+                'DELETE FROM customer WHERE id = $1 AND company_id = $2',
+                [id, companyId]
+            );
+            return { success: true };
+        } catch (error) {
+            console.error('Error deleting customer:', error);
+            return {
+                success: false,
+                error: 'Failed to delete customer'
+            };
+        }
     }
 } 

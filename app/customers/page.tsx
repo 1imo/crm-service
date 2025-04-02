@@ -16,6 +16,8 @@ import {
 import { CustomerList } from '@/components/customers/CustomerList';
 
 export default function CustomersPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+
   return (
     <div className="flex flex-col h-full">
       {/* Header + Filters and Actions */}
@@ -34,6 +36,8 @@ export default function CustomersPage() {
               type="search"
               placeholder="Search customers..."
               className="w-full pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <Select defaultValue="all">
@@ -65,7 +69,7 @@ export default function CustomersPage() {
 
       {/* Main Content */}
       <div className="p-6">
-        <CustomerList />
+        <CustomerList searchQuery={searchQuery} />
       </div>
     </div>
   );
