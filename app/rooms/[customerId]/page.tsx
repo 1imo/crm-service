@@ -15,8 +15,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/use-toast";
+import Link from 'next/link';
 
-export default function RoomPage({ params }: { params: { customerId: string, roomName: string } }) {
+export default function RoomPage({ params }: { params: { customerId: string } }) {
   const { data: session } = useSession();
   const router = useRouter();
   const [iframeUrl, setIframeUrl] = useState<string>('');
@@ -82,30 +83,11 @@ export default function RoomPage({ params }: { params: { customerId: string, roo
           <Separator orientation="vertical" className="h-8" />
           <div className="flex-1" />
           <div className="flex items-center gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Share Options</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleShare('copy')}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy to Clipboard
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleShare('email')}>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Share via Email
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleShare('link')}>
-                  <LinkIcon className="h-4 w-4 mr-2" />
-                  Copy Link
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Link href={`/rooms/view/${params.customerId}`}>
+              <Button variant="outline" size="sm">
+                View Floorplans
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
