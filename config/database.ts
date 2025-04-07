@@ -29,6 +29,10 @@ export const pools = {
     invoicing: new Pool({
         ...dbConfig,
         database: 'invoicing'
+    }),
+    rooming: new Pool({
+        ...dbConfig,
+        database: 'Rooming'
     })
 };
 

@@ -38,6 +38,24 @@ interface Order {
   updated_at: string;
 }
 
+interface Room {
+  id: number;
+  name: string;
+  customer_id: string;
+  company_id: string;
+  points: { x: number; y: number }[];
+  notes?: string;
+  floor_type?: string;
+  measurements: {
+    trueArea: number;
+    carpetArea: number;
+    truePerimeter: number;
+    carpetPerimeter: number;
+  };
+  created_at: Date;
+  updated_at: Date;
+}
+
 export default function CustomerDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
@@ -53,6 +71,8 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
   const [isDeleting, setIsDeleting] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(true);
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -88,6 +108,23 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
     };
 
     fetchOrders();
+  }, [resolvedParams.id]);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const response = await fetch(`/api/customers/${resolvedParams.id}/rooms`);
+        if (!response.ok) throw new Error('Failed to fetch rooms');
+        const data = await response.json();
+        setRooms(data);
+      } catch (err) {
+        console.error('Failed to fetch rooms:', err);
+      } finally {
+        setLoadingRooms(false);
+      }
+    };
+
+    fetchRooms();
   }, [resolvedParams.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -196,6 +233,16 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
               <Link href={`/customers/${customer?.id}/invoices`}>
                 <Receipt className="h-4 w-4 mr-2" />
                 Invoices
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <Link href={`/rooms/${customer?.id}`}>
+                <Package className="h-4 w-4 mr-2" />
+                Edit Floorplans
               </Link>
             </Button>
             <Separator orientation="vertical" className="h-8" />
@@ -347,61 +394,120 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
                 </Card>
               </div>
 
-              {/* Bottom Row: Orders (full width) */}
-              <Card className="shadow-none col-span-2">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Recent Orders</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loadingOrders ? (
-                    <div className="space-y-4">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="flex items-center space-x-4 rounded-lg border p-4">
-                          <Skeleton className="h-4 w-4" />
-                          <Skeleton className="h-9 w-9 rounded-full" />
-                          <div className="flex-1 space-y-2">
-                            <Skeleton className="h-4 w-[200px]" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : orders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Package className="h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium">No orders found</h3>
-                      <p className="text-sm text-muted-foreground">
-                        This customer hasn't placed any orders yet.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {orders.map((order) => (
-                        <Link 
-                          href={`/orders/${order.batch_id}`}
-                          key={order.id} 
-                          className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
-                        >
-                          <div className="flex flex-1 items-center space-x-4">
-                            <Avatar className="h-9 w-9">
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {order.product_name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-1 items-center justify-between">
-                              <div className="grid grid-cols-4 flex-1 gap-8">
-                                <p className="text-sm font-medium">{order.product_name}</p>
-                                <p className="text-sm text-muted-foreground">{order.status}</p>
-                                <p className="text-sm text-muted-foreground">{order.quantity} units</p>
-                                <p className="text-sm text-muted-foreground">£{parseFloat(order.total_price).toFixed(2)}</p>
-                              </div>
+              {/* Bottom Row: Orders and Rooms (full width) */}
+              <div className="space-y-6">
+                {/* Orders Card */}
+                <Card className="shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Recent Orders</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingOrders ? (
+                      <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className="flex items-center space-x-4 rounded-lg border p-4">
+                            <Skeleton className="h-4 w-4" />
+                            <Skeleton className="h-9 w-9 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                              <Skeleton className="h-4 w-[200px]" />
                             </div>
                           </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        ))}
+                      </div>
+                    ) : orders.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium">No orders found</h3>
+                        <p className="text-sm text-muted-foreground">
+                          This customer hasn't placed any orders yet.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {orders.map((order) => (
+                          <Link 
+                            href={`/orders/${order.batch_id}`}
+                            key={order.id} 
+                            className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                          >
+                            <div className="flex flex-1 items-center space-x-4">
+                              <Avatar className="h-9 w-9">
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {order.product_name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-1 items-center justify-between">
+                                <div className="grid grid-cols-4 flex-1 gap-8">
+                                  <p className="text-sm font-medium">{order.product_name}</p>
+                                  <p className="text-sm text-muted-foreground">{order.status}</p>
+                                  <p className="text-sm text-muted-foreground">{order.quantity} units</p>
+                                  <p className="text-sm text-muted-foreground">£{parseFloat(order.total_price).toFixed(2)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Rooms Card */}
+                <Card className="shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Customer Rooms</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingRooms ? (
+                      <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className="flex items-center space-x-4 rounded-lg border p-4">
+                            <Skeleton className="h-4 w-4" />
+                            <Skeleton className="h-9 w-9 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                              <Skeleton className="h-4 w-[200px]" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : rooms.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium">No rooms found</h3>
+                        <p className="text-sm text-muted-foreground">
+                          No rooms have been added for this customer yet.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {rooms.map((room) => (
+                          <Link 
+                            href={`/rooms/${customer?.id}/${room.name}`}
+                            key={room.id} 
+                            className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                          >
+                            <div className="flex flex-1 items-center space-x-4">
+                              <Avatar className="h-9 w-9">
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {room.name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex flex-1 items-center justify-between">
+                                <div className="grid grid-cols-4 flex-1 gap-8">
+                                  <p className="text-sm font-medium">{room.name}</p>
+                                  <p className="text-sm text-muted-foreground">Area: {room.measurements.trueArea.toFixed(2)} m²</p>
+                                  <p className="text-sm text-muted-foreground">Perimeter: {room.measurements.truePerimeter.toFixed(2)} m</p>
+                                  <p className="text-sm text-muted-foreground">{room.floor_type || 'Default'}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </form>
           )}
         </div>
