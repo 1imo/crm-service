@@ -3,7 +3,7 @@ name: Live Pipeline
 on:
   push:
     branches:
-      - main
+    - main
 
 jobs:
   deploy:
@@ -22,7 +22,7 @@ jobs:
           cd crm-service
           git fetch
           git pull
-          npm install
+          npm install --legacy-peer-deps
           npm run build
           npx pm2 restart 7
         EOF
