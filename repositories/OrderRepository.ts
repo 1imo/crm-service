@@ -167,6 +167,7 @@ export class OrderRepository {
     }
 
     async getByBatchId(batchId: string, companyId: string): Promise<Order[]> {
+        console.log("batchId", batchId, "companyId", companyId)
         const result = await this.db.query(
             'SELECT * FROM "order" WHERE batch_id = $1 AND company_id = $2 ORDER BY created_at DESC',
             [batchId, companyId]

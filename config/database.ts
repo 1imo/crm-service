@@ -33,6 +33,10 @@ export const pools = {
     rooming: new Pool({
         ...dbConfig,
         database: 'Rooming'
+    }),
+    bookings: new Pool({
+        ...dbConfig,
+        database: 'bookings'
     })
 };
 

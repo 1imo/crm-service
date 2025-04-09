@@ -17,10 +17,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Users, Pencil, Trash2, Loader2, Package, Receipt } from "lucide-react";
+import { Users, Pencil, Trash2, Loader2, Package, Receipt, CalendarIcon, Clock } from "lucide-react";
 import Link from 'next/link';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EventModal } from '@/components/event-modal';
+import { format } from 'date-fns';
+import { Event as EventType } from '@/types/event';
+import { Calendar } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -56,6 +60,14 @@ interface Room {
   updated_at: Date;
 }
 
+interface Event {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  color?: string;
+}
+
 export default function CustomerDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
@@ -73,6 +85,9 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [events, setEvents] = useState<EventType[]>([]);
+  const [errorEvents, setErrorEvents] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCustomer = async () => {
@@ -125,6 +140,26 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
     };
 
     fetchRooms();
+  }, [resolvedParams.id]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch(`/api/events?customerId=${resolvedParams.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch events');
+        }
+        const data = await response.json();
+        setEvents(data);
+      } catch (error) {
+        setErrorEvents('Failed to load events');
+        console.error('Error fetching events:', error);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    fetchEvents();
   }, [resolvedParams.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -215,6 +250,16 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
           <Separator orientation="vertical" className="h-8" />
           <div className="flex-1" />
           <div className="flex items-center gap-3">
+            <EventModal
+              trigger={
+                <Button variant="outline" size="sm">
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  Schedule Event
+                </Button>
+              }
+              customerId={customer?.id || ''}
+              customerName={`${customer?.first_name} ${customer?.last_name}`}
+            />
             <Button
               variant="outline"
               size="sm"
@@ -393,6 +438,60 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Events Section */}
+              <Card className="shadow-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Events</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loadingEvents ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : errorEvents ? (
+                    <div className="text-red-500">{errorEvents}</div>
+                  ) : events.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <CalendarIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium">No events found</h3>
+                      <p className="text-sm text-muted-foreground">
+                        This customer hasn't been associated with any events yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {events.map((event) => (
+                        <Link 
+                          href={`/calendar/events/${event.id}`}
+                          key={event.id} 
+                          className="flex items-center space-x-4 rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                        >
+                          <div className="flex flex-1 items-center space-x-4">
+                            <div 
+                              className="h-9 w-9 rounded-md flex items-center justify-center"
+                              style={{ backgroundColor: event.color || '#00603A' }}
+                            >
+                              <CalendarIcon className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="flex flex-1 items-center justify-between">
+                              <div className="grid grid-cols-3 flex-1 gap-8">
+                                <p className="text-sm font-medium">{event.title}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {format(new Date(event.start_time), 'MMM d, yyyy')}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {format(new Date(event.start_time), 'HH:mm')} - {format(new Date(event.end_time), 'HH:mm')}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Bottom Row: Orders and Rooms (full width) */}
               <div className="space-y-6">

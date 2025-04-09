@@ -19,8 +19,12 @@ export async function GET(
         const customerRepository = new CustomerRepository();
         const productRepository = new ProductRepository();
 
+        console.log("HERE")
+
         // Get orders
         const orders = await orderRepository.getByBatchId(params.batchId, session.user.companyId);
+
+        console.log('orders', orders)
 
         // Get unique customer ID and product names
         const customerId = orders[0]?.customer_id;

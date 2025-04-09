@@ -26,8 +26,10 @@ import {
   User,
   MapPin,
   Phone,
+  CalendarIcon,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EventModal } from '@/components/event-modal';
 
 interface OrderWithDetails extends Order {
   customer_details: {
@@ -307,6 +309,19 @@ export default function OrderBatchDetailsPage({ params }: { params: { batchId: s
               <Mail className="mr-2 h-4 w-4" />
               Send Invoice
             </Button>
+            <EventModal
+              trigger={
+                <Button variant="outline" size="sm">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  Set Meeting
+                </Button>
+              }
+              customerId={firstOrder.customer_details?.id}
+              customerName={`${firstOrder.customer_details?.first_name} ${firstOrder.customer_details?.last_name}`}
+              onEventCreated={() => {
+                // Optional: Add any post-creation logic here
+              }}
+            />
             <Button
               variant="destructive"
               size="sm"

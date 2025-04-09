@@ -20,6 +20,7 @@ import {
   ReceiptIcon,
   Settings2Icon,
   LogOutIcon,
+  CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -128,6 +129,11 @@ export default function Navbar() {
           href: '/analytics',
           label: 'Analytics',
           icon: <PackageIcon className="h-4 w-4" />
+        },
+        {
+          href: '/calendar',
+          label: 'Calendar',
+          icon: <CalendarIcon className="h-4 w-4" />
         },
       ]
     },
